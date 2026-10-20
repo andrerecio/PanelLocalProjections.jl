@@ -1,0 +1,25 @@
+# Check-only: formatting is done locally with `julia --project=dev dev/format.jl`.
+name: Format check
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - name: Install JuliaFormatter 2
+        run: julia -e 'using Pkg; Pkg.add(name = "JuliaFormatter", version = "2")'
+      - name: Check formatting (sciml)
+        run: |
+          julia -e 'using JuliaFormatter
+                    clean = all(format(p; overwrite = false) for p in ("src", "ext", "test", "dev", "docs/make.jl") if ispath(p))
+                    clean || error("Run `julia --project=dev dev/format.jl` and commit the result.")'

@@ -1,0 +1,67 @@
+# Roadmap: PanelLocalProjections.jl v0.1
+
+Work happens on `dev`, with one commit per phase once its gate passes; nothing is pushed.
+
+**Every phase gate requires all of the following:**
+- `Pkg.test()` is green on Julia 1.12 and on `julia +lts` (1.10), with Aqua's checks all enabled.
+- `julia --project=dev dev/format.jl --check` is clean.
+- `julia --project=dev dev/make_fixtures.jl --check` passes.
+- The phase's cross-check scripts reproduce the committed fixtures numerically.
+- The docs build.
+- CLAUDE.md, this file and CHANGELOG.md are updated.
+
+The full design and the rationale for every convention are in the approved plan. Local copy: `docs/notes/design/approved_plan.md` (gitignored).
+
+## Phase 0: Bootstrap
+- [x] `dev` branch, `.gitignore` (docs/paper, docs/references, docs/notes, starting_idea.md are local-only)
+- [x] Project.toml (`julia = "1.10"`), module skeleton, versioned manifests (`Manifest-v1.12.toml`, `Manifest-v1.10.toml`)
+- [x] `test/` (TestItemRunner + standalone `test/Project.toml`, Aqua), `dev/` (format `--check`, `make_fixtures --check`)
+- [x] Synthetic fixtures, `test/support/PLPDGPs.jl`
+- [x] docs skeleton, GitHub workflows (CI on lts and 1; check-only Format; Documentation; CompatHelper; TagBot; dependabot)
+- [x] README, CITATION.bib, CHANGELOG, CLAUDE.md
+- [x] `crosscheck/`: PyStata runner, uv venv, project-local Stata ado dir, `setup_stata.do`, smoke checks, `VERSIONS.md`, ado manifest
+- [x] Read the installed sources of xtlp, reghdfe, xtscc, harreg, locproj, xtarsim and xtspj; claims verified (`docs/notes/stata_sources/`, local)
+
+**Exit:** all of the above; the Stata and R smoke checks pass.
+
+## Phase 1: Core FE panel LP and inference
+- [ ] `PanelIndex`: calendar periods, Dates with `frequency`, gap statistics, gathers
+- [ ] Formula terms: `leads`, `ldiff`, `anchor`, `cumul`, `lags`, `firstdiff`, `fe`
+- [ ] Rewrite helpers by own function, accepting known foreign helpers
+- [ ] Design construction; masks (`subset`, `sample`, singletons)
+- [ ] FE absorption: one-way exact, alternating projections with guarded Irons–Tuck, `OneSweep`; df_a via components; nesting
+- [ ] OLS: absorbed-column screen before equilibration; pivoted QR; absorbed-shock error
+- [ ] `WithinFE`; `HorizonFit` with group score sums
+- [ ] `Robust`, `Clustered` (1/2-way, `ssc` `:none`/`:stata`/`:mss`, PSD), `DriscollKraaySE` (`:nw94`, `:as2026`, `:mss2026`, Int; `:calendar`/`:position`)
+- [ ] `summarize`/`IRFSummary` (Tables source), `show`, RecipesBase recipe, Makie extension
+- [ ] Cross-checks: xtlp, reghdfe, xtscc and xtreg (`p1_fe.do`); fixest and MSS `LP_panel` FE (R)
+- [ ] Benchmark: WithinFE, firm + sector×quarter FE, N=15.5k, T=124, H=20, ≤5 min, ≤2 GB
+
+## Phase 2: Split-panel jackknife (Mei–Sheng–Shi)
+- [ ] `SplitPanelJackknife(split = :ceil | :floor)`; halves re-absorbed and never dropping rows; D-score variance
+- [ ] Cross-checks: xtlp `m(spj)`, xtspj (balanced, even n_h), MSS `LP_panel(method = "SPJ")`
+- [ ] MSS applications (local): exact n per h, Table 1 peaks to 3 decimals, EPS paths within 1e-3, R notebook calls at 1e-9
+- [ ] Monte Carlo smoke run of the toy design (ρ = 0.8, N = 30, T = 60)
+
+## Phase 3: Cumulative-difference OLS (Ugarte-Ruiz)
+- [ ] `CDOLS(validate = true)` and its validation rules
+- [ ] xtarsim panels (committed); regress / xtscc / locproj / xtreg / xtlp cross-checks; fixest
+- [ ] Analytic plims and a negative test with heterogeneous shock means
+
+## Phase 4: t-LAHR (Almuzara–Sancibrián)
+- [ ] `LagAugmented(ICLags | CappedLags | ConstantLags)`; synthetic AIC/BIC (B.3/B.4)
+- [ ] `TLAHR(refine)`: CR0 by time; HC2 on synthetic regressors (thin SVD); IK ν with contrast e_k; exposure residualisation
+- [ ] `CosineHAR`, `synthetic`, `lagorder`
+- [ ] Cross-checks: xtlp `vce(cluster t, ase)`; Stata `regress, vce(hc2, dfadjust)` (`e(adj_df)`); harreg; A&S `panel_LP.R` grid
+- [ ] Monte Carlo smoke run of the stylized Table 1 design (`:mc_full` locally)
+
+## Phase 5: Documentation, audit, release
+- [ ] Guide, methods and cross-check pages; audit pages (MSS R, A&S code, xtlp, Ugarte-Ruiz, Ramey, tidyMacro); `deviations.md`
+- [ ] `replication/firm_level_wip.md` (OW20 and the JL24 reduced form; CFFS23 and the JL24 IV blocked on LP-IV)
+- [ ] Full cross-check re-run from an empty `crosscheck/ado`; strict docs build; version 0.1.0
+
+## After v0.1
+- Panel LP-IV, with t-LAHR for IV (A&S supp. §B) and ivreghdfe/xtivreg2 cross-checks
+- Joint (sup-t) bands across horizons, built on the stored group score sums
+- Negative horizons (pre-trends), lagged-FE interactions, a `panelshift` helper
+- Firm-level replications (OW20, CFFS23, JL24) with user-supplied Compustat data

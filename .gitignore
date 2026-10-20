@@ -1,0 +1,36 @@
+# Local-only reference material (read-only; never committed)
+docs/paper/
+docs/references/
+docs/notes/
+starting_idea.md
+
+# Julia
+Manifest*.toml
+LocalPreferences.toml
+JuliaLocalPreferences.toml
+docs/build/
+docs/site/
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+
+# Local cross-check tooling (PyStata venv, project-local Stata ado dir, run outputs)
+.venv/
+.python-version
+crosscheck/ado/
+crosscheck/out/
+crosscheck/**/*.log
+*.smcl
+
+# Test fixtures computed on third-party data (local only)
+test/fixtures/local/
+
+# R, OS, editors, tools
+.Rhistory
+Rplots.pdf
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+.claude/settings.local.json

@@ -1,0 +1,27 @@
+name = "PanelLocalProjections"
+uuid = "4bc008c6-1160-4c54-8f8b-e57ec2b93f89"
+authors = ["Andrea Recine <andrearec123@gmail.com>"]
+version = "0.1.0-DEV"
+
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsAPI = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
+StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
+StatsModels = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
+Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+
+[compat]
+Dates = "1"
+LinearAlgebra = "1"
+Printf = "1"
+RecipesBase = "1"
+Statistics = "1"
+StatsAPI = "1.7"
+StatsFuns = "1, 2"
+StatsModels = "0.7"
+Tables = "1"
+julia = "1.10"

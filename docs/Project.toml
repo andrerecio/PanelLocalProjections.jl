@@ -1,0 +1,9 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+PanelLocalProjections = "4bc008c6-1160-4c54-8f8b-e57ec2b93f89"
+
+[sources]
+PanelLocalProjections = {path = ".."}
+
+[compat]
+Documenter = "1"
