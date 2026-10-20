@@ -2,6 +2,66 @@
 
 ## Unreleased (0.1.0-DEV)
 
+### Phase 1: fixed-effects panel LP and inference
+- `panellp(f, data; id, time, horizon, …)` with `WithinFE()`. Leads, lags and
+  differences go through a (unit, period) lookup: they respect gaps and never cross units,
+  and nothing is dropped before shifting. Integer or `Date` periods (with `frequency`).
+  Per-horizon or common samples, a `subset` applied after the shifts, and iterative
+  singleton removal.
+- Formula helpers `leads`, `ldiff`, `anchor`, `cumul`, `lags`, `firstdiff`, `fe`
+  (including `fe(a) & fe(b)`) and shock × exposure interactions; `@formula` re-exported.
+- In-house fixed-effect absorption: exact one-way demeaning, alternating projections with
+  an Irons–Tuck step, `OneSweep()` for the Mei–Sheng–Shi code. Absorbed degrees of freedom
+  follow reghdfe's pairwise rule.
+- OLS by column-equilibrated pivoted QR. Regressors absorbed by the fixed effects are
+  omitted; an absorbed or collinear shock is an error.
+- Post-estimation variances from stored score sums: `Robust`, `Clustered` (one- or
+  two-way; `ssc = :none | :stata | :mss`; PSD repair `:stata | :raw`) and
+  `DriscollKraaySE` (bandwidths `:nw94`, `:as2026`, `:mss2026` or fixed; calendar or
+  position lags; `ssc = :none | :stata | :xtscc`). Critical values follow each convention.
+- `summarize` → `IRFSummary` (a Tables.jl table), `coefpath`, `nobspath`, `esample`; a
+  Plots recipe and a Makie extension (`irfplot`, `irfplot!`).
+- Cross-checked against xtlp, reghdfe, xtreg, regress and xtscc (Stata), fixest and the
+  Mei–Sheng–Shi `LP_panel` (R), at horizons 0–6 on the synthetic panels and on derived
+  panels built for edge cases. These cover the default Driscoll–Kraay bandwidth per
+  horizon, an interior period absent from every sample, singleton cascades, disconnected
+  fixed-effect blocks, and two-way variances whose PSD repair fires. Coefficients agree
+  within 5e-13 and standard errors within 2e-10. Observation and cluster counts, critical
+  df and absorbed df agree exactly.
+- Documentation: getting started, data, formula, inference conventions, absorption, API.
+
+Fixes from the adversarial review of Phase 1:
+- **Absorption:** the stopping rule of `AlternatingProjections` is relative to the column
+  after its first sweep, so it no longer depends on the units or the level of the data.
+  Small-scale columns were stopped early, and an aggregate shock at a small scale could
+  escape the absorbed-shock error.
+- **Dates:** `fe(date)` and clusters on a `Date` time column group by period, not by day.
+- **Degenerate horizons:** a horizon whose sample leaves the shock absorbed or collinear
+  is `:singular` (NaN, reported) instead of aborting every horizon. It is still an error
+  when this happens at every horizon.
+- **Undefined variances:** a single cluster or period, or no residual degrees of freedom,
+  gives NaN with a warning instead of a LAPACK error. A negative variance gives a NaN
+  standard error instead of a `DomainError`.
+- **PSD repair (`psd = :stata`):** with an intercept, the slopes are clipped on their
+  own and the intercept enters the metric with scale 1, as in reghdfe. fixest's default
+  two-way repair is `psd = :raw`.
+- **Missing values:** a function of a missing value is missing (`(w > 0)` was 0). `NaN`
+  in a fixed-effect or cluster column is a missing value.
+- **Warnings:** each call reports omitted regressors, empty or singular horizons and
+  non-convergence. They are no longer suppressed after the first call of a session, and
+  `show(r)` lists them.
+- **Input checks:**
+  - `ssc = :mss` only for `Clustered(:unit)` and `Clustered(:unit, :time)`;
+  - two names for one cluster dimension, data columns that shadow `:unit`/`:time`, and
+    unsupported time columns (which recursed endlessly) are errors;
+  - `summarize(r, cv)` checks that `cv` was computed from `r`.
+- **Inputs accepted:**
+  - horizons as consecutive integer vectors;
+  - `frequency` and `clusters` as strings;
+  - numeric columns of abstract element type;
+  - nested Bool functions (`ifelse`, `!`, `|`) in formulas;
+  - formulas built in code from the helpers (they are StatsModels terms).
+
 ### Phase 0: bootstrap
 - Package skeleton: `Project.toml` with Julia compat floor 1.10 (LTS) and versioned
   manifests (`Manifest-v1.12.toml`, `Manifest-v1.10.toml`, both gitignored).

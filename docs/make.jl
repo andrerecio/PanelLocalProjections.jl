@@ -9,7 +9,11 @@ makedocs(;
     sitename = "PanelLocalProjections.jl",
     authors = "Andrea Recine",
     format = Documenter.HTML(; prettyurls = get(ENV, "CI", "false") == "true"),
-    pages = ["Home" => "index.md"],
+    pages = ["Home" => "index.md",
+        "Guide" => ["guide/example.md", "guide/data.md", "guide/formula.md",
+            "guide/inference.md"],
+        "Methods" => ["methods/absorption.md"],
+        "API" => "api.md"],
     checkdocs = :exports,
     # docs/paper, docs/references and docs/notes are local, gitignored reference
     # material; only the pages listed above are built.

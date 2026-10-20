@@ -25,17 +25,20 @@ The full design and the rationale for every convention are in the approved plan.
 **Exit:** all of the above; the Stata and R smoke checks pass.
 
 ## Phase 1: Core FE panel LP and inference
-- [ ] `PanelIndex`: calendar periods, Dates with `frequency`, gap statistics, gathers
-- [ ] Formula terms: `leads`, `ldiff`, `anchor`, `cumul`, `lags`, `firstdiff`, `fe`
-- [ ] Rewrite helpers by own function, accepting known foreign helpers
-- [ ] Design construction; masks (`subset`, `sample`, singletons)
-- [ ] FE absorption: one-way exact, alternating projections with guarded Irons–Tuck, `OneSweep`; df_a via components; nesting
-- [ ] OLS: absorbed-column screen before equilibration; pivoted QR; absorbed-shock error
-- [ ] `WithinFE`; `HorizonFit` with group score sums
-- [ ] `Robust`, `Clustered` (1/2-way, `ssc` `:none`/`:stata`/`:mss`, PSD), `DriscollKraaySE` (`:nw94`, `:as2026`, `:mss2026`, Int; `:calendar`/`:position`)
-- [ ] `summarize`/`IRFSummary` (Tables source), `show`, RecipesBase recipe, Makie extension
-- [ ] Cross-checks: xtlp, reghdfe, xtscc and xtreg (`p1_fe.do`); fixest and MSS `LP_panel` FE (R)
-- [ ] Benchmark: WithinFE, firm + sector×quarter FE, N=15.5k, T=124, H=20, ≤5 min, ≤2 GB
+- [x] `PanelIndex`: calendar periods, Dates with `frequency`, gap statistics, gathers
+- [x] Formula terms: `leads`, `ldiff`, `anchor`, `cumul`, `lags`, `firstdiff`, `fe`; `@formula` re-exported
+- [x] Rewrite helpers by own function, accepting known foreign helpers (error on any other same-named function)
+- [x] Design construction; masks (`subset`, `sample`, singletons)
+- [x] FE absorption: one-way exact, alternating projections with guarded Irons–Tuck, `OneSweep`; df_a by reghdfe's pairwise rule; nesting
+- [x] OLS: absorbed-column screen before equilibration; pivoted QR; absorbed/collinear-shock errors
+- [x] `WithinFE`; `HorizonFit` with group score sums (global codes)
+- [x] `Robust`, `Clustered` (1/2-way, `ssc` `:none`/`:stata`/`:mss`, `psd` `:stata`/`:raw`), `DriscollKraaySE` (`:nw94`, `:as2026`, `:mss2026`, Int; `:calendar`/`:position`)
+- [x] `summarize`/`IRFSummary` (Tables source), `show`, RecipesBase recipe, Makie extension (`irfplot`, `irfplot!`)
+- [x] Cross-checks: xtlp, reghdfe, xtscc, xtreg, regress (`p1_fe.do`, h = 0..6, 2380 rows incl. derived edge-case panels); fixest (incl. a non-PSD two-way case) and MSS `LP_panel` FE (R): b within 5e-13, se within 2e-10
+- [x] Benchmark (`dev/benchmark_scale.jl`): WithinFE, firm + sector×quarter FE, 1.10M rows, H = 20: 12.8 s (14 sweeps per horizon), 1.6 GB max RSS
+- [x] Adversarial review (4 lenses, 46 findings, verified): fixes applied (see CHANGELOG)
+- [x] Phase 1 gate; commit
+- Not covered by the test suite: the Makie extension (exercised by the docs build only)
 
 ## Phase 2: Split-panel jackknife (Mei–Sheng–Shi)
 - [ ] `SplitPanelJackknife(split = :ceil | :floor)`; halves re-absorbed and never dropping rows; D-score variance

@@ -25,6 +25,9 @@ Added from Phase 1 on. Columns: tool | version/SHA | licence | input | generatin
 
 | File | Tool | Version / SHA | Licence | Input | Script |
 |---|---|---|---|---|---|
+| `stata/p1_fe.csv` | Stata 19.5 BE: xtlp 1.1.1, reghdfe 6.14.1, xtreg, regress, xtscc 1.4 | xtlp `cd3fa24`, reghdfe `29b2b20` (see `crosscheck/VERSIONS.md`) | xtlp MIT; reghdfe MIT; xtscc SSC (output only) | `fx_balanced`, `fx_unbalanced`, and panels derived from them by the filters in the do-file (`*_t29`, `fx_balanced_gap`, `fx_balanced_2blocks`) | `crosscheck/stata/p1_fe.do` |
+| `r/p1_fixest.csv` | R 4.5.3, fixest 0.14.0 | CRAN | fixest GPL-3 (output only) | `fx_balanced`, `fx_unbalanced`, `fx_balanced` units 1–4 | `crosscheck/R/p1_fixest.R` |
+| `r/p1p2_mss_lppanel.csv` | R 4.5.3, Mei–Sheng–Shi `LP_panel` (`LP_panel_all.r`) | metricshilab/panel-lp-replication `882b046` | MIT | `fx_balanced`, `fx_unbalanced` | `crosscheck/R/p1p2_mss_lppanel.R` |
 
 ## `local/` (gitignored)
 

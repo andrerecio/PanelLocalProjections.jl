@@ -23,11 +23,33 @@ module PanelLocalProjections
 using Dates: Dates
 using LinearAlgebra: LinearAlgebra
 using Printf: Printf
-using RecipesBase: RecipesBase
+using RecipesBase: RecipesBase, @recipe, @series
 using Statistics: Statistics
-using StatsAPI: StatsAPI
+using StatsAPI: StatsAPI, coef, coefnames, vcov, stderror, nobs
 using StatsFuns: StatsFuns
-using StatsModels: StatsModels
+using StatsModels: StatsModels, @formula
 using Tables: Tables
+
+export panellp, PanelLocalProjection, PanelLPVcov, IRFSummary, @formula
+export leads, ldiff, anchor, cumul, lags, firstdiff, fe
+export WithinFE, AlternatingProjections, OneSweep
+export Robust, Clustered, DriscollKraaySE
+export summarize, coefpath, nobspath, horizons, esample
+export coef, coefnames, vcov, stderror, nobs
+export irfplot, irfplot!
+
+include("utils.jl")
+include("types.jl")
+include("panelindex.jl")
+include("formula.jl")
+include("design.jl")
+include("absorb.jl")
+include("ols.jl")
+include("scores.jl")
+include("estimators.jl")
+include("panellp.jl")
+include("vcov.jl")
+include("summary.jl")
+include("plotting.jl")
 
 end # module

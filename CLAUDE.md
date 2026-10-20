@@ -57,13 +57,14 @@ Rscript crosscheck/R/<file>.R
 ```
 
 - **Test tags:**
-  - `:core`, `:aqua`, `:fixtures`, plus one tag per feature as phases land (`:vcov`, `:spj`, `:cdols`, `:tlahr`, `:mc`);
+  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:crosscheck` (with `:stata`/`:r`); `:spj`, `:cdols`, `:tlahr` and `:mc` arrive with later phases;
   - `:mc_full` runs only with `PLP_MC_FULL=1`;
   - `:local_mss` items are skipped automatically when their local data is absent (`test/runtests.jl`).
 - **Formatting:** files that use `@testitem … setup = [...]` start with `#! format: off`, because the SciML style mangles them.
-- **Kaimon.** When the `mcp__kaimon__*` tools are available, use the live REPL (session for this repo via `start_session(project_path = …)`, then `ex`) instead of spawning `julia` for exploration. Revise picks up `src/` edits automatically. `run_tests` runs the whole suite, because TestItemRunner ignores its pattern argument.
+- **Kaimon.** When the `mcp__kaimon__*` tools are available, use the live REPL (session for this repo via `start_session(project_path = …)`, then `ex`) instead of spawning `julia` for exploration. Revise picks up `src/` edits automatically, but a struct change in `src/types.jl` needs `manage_repl(command = "restart")`. Load test-only packages and the fixtures with `pushfirst!(LOAD_PATH, joinpath(pkgdir(PanelLocalProjections), "dev"))` and `include("test/support/PLPDGPs.jl")` (`read_csv`). `run_tests` runs the whole suite, because TestItemRunner ignores its pattern argument.
+- **Scale benchmark:** `julia --project=. -e 'push!(LOAD_PATH, "dev"); include("dev/benchmark_scale.jl")'` (about 15 s; Phase 1 reference: 12.8 s, 14 sweeps per horizon and 1.6 GB max RSS for 1.1M rows and 21 horizons).
 
-## Architecture (target; see `docs/notes/design/approved_plan.md`)
+## Architecture (Phase 1 implemented; later phases per `docs/notes/design/approved_plan.md`)
 
 One module and no submodules. Every struct lives in `src/types.jl`. Include order: `utils` → `types` → `panelindex` → `formula` → `design` → `absorb` → `ols` → `scores` → `lagselect` → `estimators` → `panellp` → `vcov` → `summary` → `plotting`; Makie lives in `ext/`.
 
@@ -81,7 +82,9 @@ One module and no submodules. Every struct lives in `src/types.jl`. Include orde
 **Invariants:**
 - Never shift by row position. Never drop missing values before shifting. Use NaN, not `missing`.
 - Re-absorb every FE on each horizon's sample and inside each SPJ half.
-- A shock absorbed by the FE (e.g. an aggregate shock with `fe(time)`) is an error, never a zero coefficient.
+- A shock absorbed by the FE (e.g. an aggregate shock with `fe(time)`) is never a zero coefficient. It is an error when it happens at every horizon. At some horizons only, those fits are `:singular` with NaN coefficients.
+- Problems at some horizons (empty, singular, omitted regressors, non-convergence) are reported once per `panellp` call (`_fitnotes`) and listed by `show(r)`. Never use `maxlog`, which silences later calls for the rest of the session.
+- Undefined variances (a single cluster or period, no residual df) are NaN with a warning, never an exception. Negative variances give NaN standard errors.
 - DK, EWC and t-LAHR aggregate scores by calendar period.
 
 **Compat switches** exist only where a published number depends on them:
@@ -101,6 +104,7 @@ The map from each reference command to the matching Julia options is in `crossch
   - reghdfe 6 has no `compile` or `version` subcommands (they replay and fail with r(301)), and its DK `bw` = lags + 1.
   - Read ado sources as files under `crosscheck/ado/plus/<letter>/`, not with `viewsource`.
 - **MSS application data.** The CSVs are float32-origin, so expect about 1e-6 agreement. MSS `LP_panel` is reliable only in its `H = 0` mode with pre-built leads and lags, and it needs a base `data.frame`.
-- **fixest ≥ 0.13.** Use `ssc(K.adj = , G.adj = )`, set `fixef.rm` explicitly and pass `vcov =` explicitly.
+- **fixest ≥ 0.13.** Use `ssc(K.adj = , G.adj = )`, set `fixef.rm` explicitly and pass `vcov =` explicitly. Its default `vcov_fix = TRUE` clips negative eigenvalues of V for every vcov type: that is `psd = :raw` (two-way).
+- **reghdfe two-way clustering with `noabsorb`.** reghdfe clips the slope block on its own. Stata can then refuse the repaired V when posting it ("nonsymmetric or highly singular") and report zero standard errors.
 - **A&S `panel_LP.R`.** It zero-fills rows when the FE columns are character, and its `Date` branch is dead code. Pass numeric ids and periods.
 - **Fixture DGPs** (`test/support/PLPDGPs.jl`) must use explicit left-to-right loops for reductions. `sum` reassociates, and `Pkg.test` runs with `--check-bounds=yes`, which changed results in the last ulp.
