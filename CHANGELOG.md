@@ -2,6 +2,45 @@
 
 ## Unreleased (0.1.0-DEV)
 
+### Phase 3: cumulative-difference OLS (Ugarte-Ruiz 2026)
+- `CDOLS(; validate = true)`: pooled OLS of the long difference y_{t+h} − y_{t−1} on the
+  shock and its lag. The specification rules are checked structurally, whatever the
+  spelling of the formula:
+  - a long-difference response (`cumul(firstdiff(y))` is `ldiff(y)`);
+  - every shock dated right after the base period, with its first lag among the
+    regressors;
+  - outcomes only lagged beyond the response's start, and differenced when the response
+    differences them;
+  - no fixed effect nested in the units, in the data or in any horizon's sample, with a
+    warning for groups with a single unit.
+
+  `validate = false` admits pre-built outcome columns.
+- Cross-checked against `regress`, `xtscc` and `locproj … m(reg) tr(cmlt) sl(1) [yl(1)]`
+  in Stata and fixest in R, on the panels drawn by `xtarsim` (the paper's Monte Carlo
+  generator), the native design and an unbalanced panel. Coefficients agree within
+  1e-12, standard errors within 5e-14, and observation, degrees-of-freedom and cluster
+  counts exactly. The paper's comparators reproduce too: `xtreg, fe` (CMFE1) and
+  `xtlp m(spj)` (the jackknife of its applications).
+- Tests:
+  - the probability limits of β_h, of the γ_h nuisance coefficient and of the response
+    when s_{t−1} is omitted;
+  - the different estimand of the levels LP without s_{t−1} (the paper's FE and
+    jackknife comparators): +178% of β at h = 0 under joint persistence;
+  - a negative test: unit-specific shock means make CD-OLS inconsistent;
+  - that the native design, at the paper's signal-to-noise ratio, reproduces the
+    `xtarsim` panels.
+- A Monte Carlo of robust versus clustered standard errors in the paper's designs. With
+  ρ_s = 0 and ρ_y = 0.8, robust ones overstate the sampling sd by 19–51% at h = 2–9 (the
+  paper's over-coverage). With ρ_s = ρ_y = 0.8 they understate it by 7–12% at h = 1–4.
+  Unit-clustered ones match it within 4%.
+- The `xtarsim` panels are committed (kiss32 draws), with a test of their documented
+  moments.
+- The Cerra–Saxena application (local data) reproduces the paper's Fig. 9 CD-OLS path
+  within 0.06. The Mian–Sufi–Verner application is not reproduced: the specification is
+  not stated in the paper, and even its fixed-effects and jackknife lines differ from the
+  replication file.
+- Docs: `methods/cdols.md`, `replication/ugarte2026.md`, `audit/ugarte.md`.
+
 ### Phase 2: split-panel jackknife (Mei, Sheng & Shi 2026)
 - `SplitPanelJackknife(; split = :ceil | :floor)`: per-unit halves of each horizon's
   sample, every fixed effect re-estimated inside each half, and the variance from the

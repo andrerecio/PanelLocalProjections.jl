@@ -54,9 +54,14 @@ The full design and the rationale for every convention are in the approved plan.
 - [x] Phase 2 gate; commit
 
 ## Phase 3: Cumulative-difference OLS (Ugarte-Ruiz)
-- [ ] `CDOLS(validate = true)` and its validation rules
-- [ ] xtarsim panels (committed); regress / xtscc / locproj / xtreg / xtlp cross-checks; fixest
-- [ ] Analytic plims and a negative test with heterogeneous shock means
+- [x] `CDOLS(validate = true)` and its validation rules
+- [x] xtarsim panels (committed; moments tested; the native DGP at SNR 20 reproduces them); regress / xtscc / locproj / xtreg / xtlp cross-checks, also on the unbalanced `fx_unbalanced` (b 1e-12, se 5e-14); fixest (4e-14)
+- [x] Analytic plims (β_h, γ_h, omitted s_{t−1}) and a negative test with heterogeneous shock means
+- [x] Monte Carlo of robust vs clustered standard errors (the paper's over-coverage)
+- [x] Local: Cerra–Saxena CD-OLS reproduces Fig. 9 (within 0.06); Mian–Sufi–Verner not reproduced (specification not stated; Fig. 10's FE/SPJ lines also differ from the replication file)
+- [x] Docs: `methods/cdols.md`, `replication/ugarte2026.md`, `audit/ugarte.md`
+- [x] Adversarial review (4 lenses, verified findings) addressed: validator rules made structural, docs and Monte Carlo corrected, unbalanced cross-check added
+- [x] Phase 3 gate; commit
 
 ## Phase 4: t-LAHR (Almuzara–Sancibrián)
 - [ ] `LagAugmented(ICLags | CappedLags | ConstantLags)`; synthetic AIC/BIC (B.3/B.4)

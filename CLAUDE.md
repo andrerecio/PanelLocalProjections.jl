@@ -41,8 +41,9 @@ julia --project -e 'using Pkg; Pkg.instantiate()'
 julia --project -e 'using Pkg; Pkg.test()'                      # full suite: TestItemRunner items + Aqua
 julia +lts --project -e 'using Pkg; Pkg.test()'                 # compat floor 1.10 (first time: Pkg.resolve() before Pkg.test())
 
-# Run a tagged subset. Test deps are in test/Project.toml; TestEnv lives in the dev env, stacked onto LOAD_PATH.
-julia --project -e 'push!(LOAD_PATH, "dev"); using TestEnv; TestEnv.activate(); using TestItemRunner; @run_package_tests filter = ti -> (:fixtures in ti.tags)'
+# Run a tagged subset, from the repo root. Test deps are in test/Project.toml; TestEnv lives in the dev env, stacked onto LOAD_PATH.
+# (Not @run_package_tests: under `julia -e` it resolves its root to the parent directory, so the test items lose `using PanelLocalProjections`.)
+julia --project -e 'push!(LOAD_PATH, "dev"); using TestEnv; TestEnv.activate(); using TestItemRunner; TestItemRunner.run_tests("."; filter = ti -> (:fixtures in ti.tags))'
 
 julia --project=dev dev/format.jl [--check]                     # SciML formatting; --check exits 1 if anything would change
 julia --project=dev dev/make_fixtures.jl [--check]              # (re)generate / verify test/fixtures/synthetic/*.csv
@@ -57,14 +58,14 @@ Rscript crosscheck/R/<file>.R
 ```
 
 - **Test tags:**
-  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:spj`, `:mc` (Monte Carlo, ~20 s), `:crosscheck` (with `:stata`/`:r`); `:cdols` and `:tlahr` arrive with later phases;
+  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:spj`, `:cdols`, `:mc` (Monte Carlo, ~30 s in all), `:crosscheck` (with `:stata`/`:r`); `:tlahr` arrives with Phase 4;
   - `:mc_full` runs only with `PLP_MC_FULL=1`;
   - `:local_mss` items are skipped automatically when their local data is absent (`test/runtests.jl`).
 - **Formatting:** files that use `@testitem … setup = [...]` start with `#! format: off`, because the SciML style mangles them.
 - **Kaimon.** When the `mcp__kaimon__*` tools are available, use the live REPL (session for this repo via `start_session(project_path = …)`, then `ex`) instead of spawning `julia` for exploration. Revise picks up `src/` edits automatically, but a struct change in `src/types.jl` needs `manage_repl(command = "restart")`. Load test-only packages and the fixtures with `pushfirst!(LOAD_PATH, joinpath(pkgdir(PanelLocalProjections), "dev"))` and `include("test/support/PLPDGPs.jl")` (`read_csv`). `run_tests` runs the whole suite, because TestItemRunner ignores its pattern argument.
 - **Scale benchmark:** `julia --project=. -e 'push!(LOAD_PATH, "dev"); include("dev/benchmark_scale.jl")'` (about 15 s; Phase 1 reference: 12.8 s, 14 sweeps per horizon and 1.6 GB max RSS for 1.1M rows and 21 horizons).
 
-## Architecture (Phase 1 implemented; later phases per `docs/notes/design/approved_plan.md`)
+## Architecture (Phases 1–3 implemented; later phases per `docs/notes/design/approved_plan.md`)
 
 One module and no submodules. Every struct lives in `src/types.jl`. Include order: `utils` → `types` → `panelindex` → `formula` → `design` → `absorb` → `ols` → `scores` → `lagselect` → `estimators` → `panellp` → `vcov` → `summary` → `plotting`; Makie lives in `ext/`.
 
@@ -85,6 +86,7 @@ One module and no submodules. Every struct lives in `src/types.jl`. Include orde
 - A shock absorbed by the FE (e.g. an aggregate shock with `fe(time)`) is never a zero coefficient. It is an error when it happens at every horizon. At some horizons only, those fits are `:singular` with NaN coefficients.
 - Problems at some horizons (empty, singular, omitted regressors, non-convergence) are reported once per `panellp` call (`_fitnotes`) and listed by `show(r)`. Never use `maxlog`, which silences later calls for the rest of the session.
 - Undefined variances (a single cluster or period, no residual df) are NaN with a warning, never an exception. Negative variances give NaN standard errors.
+- Estimator-specific specification checks run before estimation (`_validate(estimator, design, formula)` in `estimators.jl`). `CDOLS` enforces Ugarte-Ruiz's rules, structurally (`_collags` dates every column; the shock's lag is found numerically by `_haslag`): a long-difference response, each shock dated right after the base period with its first lag among the regressors, outcomes only lagged beyond the response's start and differenced when the response differences them, and no FE nested in the units (also per horizon sample, in `_fit_horizon(::CDOLS)`). `validate = false` skips them.
 - DK, EWC and t-LAHR aggregate scores by calendar period.
 
 **Compat switches** exist only where a published number depends on them:

@@ -173,3 +173,175 @@ function _fit_horizon(est::SplitPanelJackknife, d::PanelDesign, h::Int,
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask,
         _present(groups[2], d.ngroups[2]), dof, stats, iterations, converged)
 end
+
+# ---------------------------------------------------------------------------------------
+# Specification checks, run by `panellp` before estimation
+# ---------------------------------------------------------------------------------------
+
+_validate(::PanelLPEstimator, d::PanelDesign, f) = nothing
+
+# Every use of the variables `ys` in term `t`, as (smallest lag, differenced).
+_uses!(out, t::VarTerm, ys, lag, diff) = (t.sym in ys && push!(out, (lag, diff)); out)
+_uses!(out, ::ConstTerm, ys, lag, diff) = out
+_uses!(out, t::LagsTerm, ys, lag, diff) = _uses!(out, t.term, ys, lag + first(t.lags), diff)
+_uses!(out, t::FirstDiffTerm, ys, lag, diff) = _uses!(out, t.term, ys, lag, true)
+function _uses!(out, t::FunTerm, ys, lag, diff)
+    foreach(a -> _uses!(out, a, ys, lag, diff), t.args)
+    return out
+end
+function _uses!(out, t::ProductTerm, ys, lag, diff)
+    foreach(a -> _uses!(out, a, ys, lag, diff), t.terms)
+    return out
+end
+
+# Date of each column of a term: the lag ℓ of its most recent value, x_{t−ℓ} (0 for a
+# column dated t). Lags add up; a difference and a function are dated by their most recent
+# input, an interaction by its most recent factor. Columns in the order of `_names`.
+_collags(::Union{VarTerm, ConstTerm}) = [0]
+function _collags(t::FunTerm)
+    ls = [first(_collags(a)) for a in t.args if !(a isa ConstTerm)]
+    return [isempty(ls) ? 0 : minimum(ls)]
+end
+function _collags(t::ProductTerm)
+    out = _collags(t.terms[1])
+    for c in t.terms[2:end]
+        lc = _collags(c)
+        out = [min(a, b) for a in out for b in lc]
+    end
+    return out
+end
+_collags(t::LagsTerm) = [l + c for l in t.lags for c in _collags(t.term)]
+_collags(t::FirstDiffTerm) = _collags(t.term)
+
+# Whether some regressor equals shock column j one period earlier, on the rows where both
+# are defined: the shock's first lag, however it is written (`lags(s, 1)`, `lags(s, 0:1)`,
+# `lags(firstdiff(s), 1)`, a pre-built column, …).
+function _haslag(d::PanelDesign, j::Int)
+    xl = _gather(d.X[:, j], _shift(d.pidx, -1))
+    for k in axes(d.X, 2)
+        k == j && continue
+        x = view(d.X, :, k)
+        both = 0
+        same = true
+        for r in eachindex(xl)
+            (isfinite(xl[r]) && isfinite(x[r])) || continue
+            both += 1
+            if !isapprox(xl[r], x[r]; rtol = 1e-12)
+                same = false
+                break
+            end
+        end
+        same && both > 0 && return true
+    end
+    return false
+end
+
+# Number of groups of a fixed effect whose rows all belong to one unit.
+function _singleunitgroups(fcodes::Vector{Int32}, units::AbstractVector{Int32})
+    L = Int(maximum(fcodes; init = Int32(0)))
+    first_unit = zeros(Int32, L)
+    multi = falses(L)
+    @inbounds for r in eachindex(fcodes)
+        g = fcodes[r]
+        if first_unit[g] == 0
+            first_unit[g] = units[r]
+        elseif first_unit[g] != units[r]
+            multi[g] = true
+        end
+    end
+    return count(g -> first_unit[g] != 0 && !multi[g], 1:L)
+end
+
+const _CDOLS_HINT = " (or CDOLS(validate = false) to skip the checks)"
+
+# Ugarte-Ruiz (2026): the long difference y_{t+h} − y_{t−1} removes the unit effect, and
+# the shock dated t with its lag s_{t−1} leaves the shock innovation. The checks: the
+# response is a long difference; each shock is dated right after the base period and its
+# first lag is a regressor; the outcome enters the right-hand side only predetermined
+# (lagged beyond the base period) and, if the response differences it, only in
+# differences (its level carries u_i/(1 − ρ_y)); no fixed effect is nested in the units
+# (within estimation would bring the Nickell bias back). That last rule is also checked
+# on each horizon's sample, in `_fit_horizon`.
+function _validate(est::CDOLS, d::PanelDesign, f)
+    est.validate || return nothing
+    hint = _CDOLS_HINT
+    r = d.response
+    (r isa LDiffResponse || r isa CumulResponse) || throw(ArgumentError(
+        "CDOLS estimates the long difference y_{t+h} − y_{t−1}: write the response as " *
+        "ldiff(y), or cumul(g) for a growth rate g" * hint))
+    # the response's own date: ldiff(y) and cumul(g) start at t, ldiff(lags(y, 1)) at t − 1
+    ℓr = only(_collags(r.term))
+    base = ℓr == 0 ? "t" : "t−$ℓr"
+    regs, _, _ = _rewrite_rhs(f.rhs)
+    dates = vcat(d.intercept ? [0] : Int[], (_collags(t) for t in regs)...)
+    for j in d.shockcols
+        nm = d.coefnames[j]
+        ℓ = dates[j]
+        ℓ == ℓr || throw(ArgumentError(
+            "CDOLS: the shock $(repr(nm)) is dated $(ℓ == 0 ? "t" : "t−$ℓ"), but the " *
+            "long difference starts at $base: the shock must be dated $base, right " *
+            "after the base period. Choose the shock with `shock = …`" *
+            (ℓ > ℓr ? ", or lag the response, ldiff(lags(y, $ℓ))" : "") * hint))
+        _haslag(d, j) || throw(ArgumentError(
+            "CDOLS needs the first lag of the shock $(repr(nm)) among the regressors" *
+            (ℓ == 0 ? " (lags($nm, 1))" : "") * ": without it the response is biased " *
+            "when the shock is persistent" * hint))
+    end
+    ys = _vars!(Set{Symbol}(), r.term)
+    # outcome variables the response differences (all of ldiff(y); inside cumul, one that
+    # enters differenced or at two lags, e.g. cumul(firstdiff(y))) are levels; a growth
+    # rate g in cumul(g) is not
+    function islevel(v)
+        r isa LDiffResponse && return true
+        uses = _uses!(Tuple{Int, Bool}[], r.term, Set([v]), 0, false)
+        return any(last, uses) || length(unique(first.(uses))) > 1
+    end
+    for t in regs, v in ys
+
+        uses = _uses!(Tuple{Int, Bool}[], t, Set([v]), 0, false)
+        isempty(uses) && continue
+        if any(((lag, _),) -> lag <= ℓr, uses)
+            cols = [nm for (nm, l) in zip(_names(t), _collags(t)) if l <= ℓr]
+            throw(ArgumentError(
+                "CDOLS: the outcome enters the right-hand side at or after the response's " *
+                "start ($base) in $(join(isempty(cols) ? _names(t) : cols, ", ")); use " *
+                "lags of it" * hint))
+        end
+        islevel(v) && !all(last, uses) &&
+            throw(ArgumentError(
+                "CDOLS: lagged outcomes enter in differences, lags(firstdiff($v), 1:p); a " *
+                "level of $v carries the unit effect ($(join(_names(t), ", ")))" * hint))
+    end
+    for (k, codes) in enumerate(d.fe)
+        rows = findall(!=(0), codes)
+        isempty(rows) && continue     # no observations at all: reported by panellp
+        fc = codes[rows]
+        units = view(d.pidx.unit, rows)
+        _isnested(fc, Int(maximum(fc)), units) && throw(ArgumentError(
+            "CDOLS does not absorb unit effects (fe($(d.fenames[k])) is nested in the " *
+            "units): the long difference removes them, and within estimation would bring " *
+            "the Nickell bias back. Time effects are allowed" * hint))
+        n1 = _singleunitgroups(fc, units)
+        n1 > 0 && @warn "CDOLS: $n1 group(s) of fe($(d.fenames[k])) contain a single " *
+              "unit; there the fixed effect is a unit effect, which brings back part of " *
+              "the Nickell bias of within estimation"
+    end
+    return nothing
+end
+
+# Cumulative-difference OLS is OLS on the checked design: no unit effects to absorb. A
+# fixed effect nested in the units of a horizon's sample (e.g. after `subset` or missing
+# values) is a unit effect there.
+function _fit_horizon(est::CDOLS, d::PanelDesign, h::Int, y::Vector{Float64},
+        mask::BitVector, singletons::Int, absorb::AbsorptionMethod)
+    fit = _fit_horizon(WithinFE(), d, h, y, mask, singletons, absorb)
+    if est.validate && fit.status === :ok
+        for k in axes(fit.dof.nested, 1)
+            fit.dof.nested[k, 1] && throw(ArgumentError(
+                "CDOLS does not absorb unit effects: in the sample of h = $h, " *
+                "fe($(d.fenames[k])) is nested in the units, so within estimation and its " *
+                "Nickell bias come back" * _CDOLS_HINT))
+        end
+    end
+    return fit
+end

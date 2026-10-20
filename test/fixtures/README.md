@@ -28,6 +28,9 @@ Added from Phase 1 on. Columns: tool | version/SHA | licence | input | generatin
 | `stata/p1_fe.csv` | Stata 19.5 BE: xtlp 1.1.1, reghdfe 6.14.1, xtreg, regress, xtscc 1.4 | xtlp `cd3fa24`, reghdfe `29b2b20` (see `crosscheck/VERSIONS.md`) | xtlp MIT; reghdfe MIT; xtscc SSC (output only) | `fx_balanced`, `fx_unbalanced`, and panels derived from them by the filters in the do-file (`*_t29`, `fx_balanced_gap`, `fx_balanced_2blocks`) | `crosscheck/stata/p1_fe.do` |
 | `stata/p2_spj.csv` | Stata 19.5 BE: xtlp 1.1.1 `m(spj)`, xtspj (Sun & Dhaene 2019, SSC 20190518) | as above | xtlp MIT; xtspj SSC (output only) | `fx_balanced`, `fx_unbalanced` | `crosscheck/stata/p2_spj.do` |
 | `r/p1_fixest.csv` | R 4.5.3, fixest 0.14.0 | CRAN | fixest GPL-3 (output only) | `fx_balanced`, `fx_unbalanced`, `fx_balanced` units 1–4 | `crosscheck/R/p1_fixest.R` |
+| `stata/xtarsim_s8y0.csv`, `xtarsim_s0y8.csv`, `xtarsim_s8y8.csv` | Stata 19.5 BE: xtarsim (Bruno 2005), `seed()` (kiss32) | SSC 1.0.0 (31may05) | xtarsim SSC (output only) | synthetic: N = 100, T = 50, (ρ_s, ρ_y) = (.8, 0), (0, .8), (.8, .8), β = 1, SNR 20, `oneway(corr 10)` | `crosscheck/stata/p3_xtarsim.do` |
+| `stata/p3_cdols.csv` | Stata 19.5 BE: regress, xtscc 1.4, locproj, xtreg, xtlp 1.1.1 | see `crosscheck/VERSIONS.md` | locproj, xtscc SSC; xtlp MIT (output only) | the three `xtarsim_*` panels, `fx_cdols`, `fx_unbalanced` (with `x` as the shock) | `crosscheck/stata/p3_cdols.do` |
+| `r/p3_fixest.csv` | R 4.5.3, fixest 0.14.0 | CRAN | fixest GPL-3 (output only) | the three `xtarsim_*` panels, `fx_cdols`, `fx_unbalanced` (with `x` as the shock) | `crosscheck/R/p3_fixest.R` |
 | `r/p1p2_mss_lppanel.csv` | R 4.5.3, Mei–Sheng–Shi `LP_panel` (`LP_panel_all.r`) | metricshilab/panel-lp-replication `882b046` | MIT | `fx_balanced`, `fx_unbalanced`, `fx_balanced` units 1–4 | `crosscheck/R/p1p2_mss_lppanel.R` |
 
 ## `local/` (gitignored)

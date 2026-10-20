@@ -142,6 +142,33 @@ struct SplitPanelJackknife <: PanelLPEstimator
 end
 SplitPanelJackknife(; split::Symbol = :ceil) = SplitPanelJackknife(split)
 
+"""
+    CDOLS(; validate = true)
+
+Cumulative-difference OLS (Ugarte-Ruiz 2026): pooled OLS, with an intercept (unless
+`0 +`) and without unit effects, of the long difference y_{i,t+h} − y_{i,t−1} on the
+shock and its first lag. The long difference removes the unit effect, so there is no
+within transformation and no Nickell bias.
+
+With `validate = true` the formula must follow the method:
+- the response is `ldiff(y)`, or `cumul(g)` of a growth rate `g`;
+- each shock is dated t, right after the base period t − 1 of the long difference (t − ℓ
+  with a lagged response, `ldiff(lags(y, ℓ))`), and its first lag is a regressor, however
+  it is written (`lags(s, 1)`, `lags(s, 0:1)`, …);
+- the outcome enters the right-hand side only lagged beyond the response's start and,
+  when the response differences it (`ldiff(y)`, `cumul(firstdiff(y))`), only in
+  differences, `lags(firstdiff(y), 1:p)`: a level of y carries the unit effect;
+- no fixed effect is nested in the units, in the data or in any horizon's sample (time
+  effects are allowed); fixed-effect groups with a single unit give a warning.
+
+The paper also gives every control the lags of the shock (it is not checked).
+`validate = false` skips the checks, e.g. for a pre-built long-difference column.
+"""
+struct CDOLS <: PanelLPEstimator
+    validate::Bool
+end
+CDOLS(; validate::Bool = true) = CDOLS(validate)
+
 # ---------------------------------------------------------------------------------------
 # Fixed-effect absorption (absorb.jl)
 # ---------------------------------------------------------------------------------------

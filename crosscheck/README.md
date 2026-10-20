@@ -124,3 +124,24 @@ with single-row halves).
 The variance of the split-panel jackknife is validated by these deterministic
 cross-checks. The Monte Carlo test checks the bias pattern, and coverage within its
 Monte Carlo error.
+
+### Phase 3: cumulative-difference OLS
+
+Committed tests in `test/test_crosscheck_p3.jl`, at horizons 0–9 on the three `xtarsim`
+panels (`crosscheck/stata/p3_xtarsim.do`), `fx_cdols` and the unbalanced `fx_unbalanced`
+(shock `x`; gaps, singleton units, a period absent for every unit, so no `xtscc` and no
+`xtlp` rows there), with row counts and every spec mapped, coefficients and standard
+errors, observations (not for `xtlp` rows), critical degrees of freedom (not for
+`locproj` rows) and cluster counts. The formula is `ldiff(y) ~ s + lags(s, 1)` with
+`estimator = CDOLS()` unless noted.
+
+| Reference command (Stata `xtset id t`) | `panellp` options | `vcov` spec | Agreement |
+|---|---|---|---|
+| `regress F#.y−L.y s L.s, vce(cluster id \| robust)` | `CDOLS()` | `Clustered(:unit)`, `Robust()` | b 8e-14, se 3e-14 |
+| `regress … LD.y` / `… L2.s` | `+ lags(firstdiff(y), 1)` / `lags(s, 1:2)` | `Clustered(:unit)` | b 1e-12, se 5e-14 |
+| `regress … i.t, vce(cluster id \| robust)` | `+ fe(t)`, keep (`regress` keeps singleton periods) | `Clustered(:unit)`, `Robust()` | b 9e-14, se 3e-14 |
+| `xtscc F#.y−L.y s L.s, lag(3)` (balanced panels) | `CDOLS()` | `DriscollKraaySE(3; ssc = :xtscc, timelags = :position)` | b 7e-14, se 4e-14 |
+| `locproj y s, m(reg) tr(cmlt) sl(1) [yl(1)] hor(9) vce(cluster id \| robust)` (`e(irf)`) | `CDOLS()` [`+ lags(firstdiff(y), 1)`] | `Clustered(:unit)`, `Robust()` | b 8e-14, se 3e-14 |
+| `xtreg F#.y−L.y s L.s, fe vce(cluster id)` (the paper's CMFE1) | `WithinFE()`, `fe(id)`, keep | `Clustered(:unit)` | b 3e-14, se 2e-14 |
+| `xtlp y s, fe m(spj) hor(0 9) vce(cluster id)` (the jackknife of the paper's applications; its Monte Carlo used `locproj m(xtspj)`) | `leads(y) ~ s + fe(id)`, `SplitPanelJackknife()` | `Clustered(:unit)` | b 1e-14, se 1e-14 |
+| R `feols(ld ~ s + l(s, 1))`, `cluster = ~id` (default `ssc`, and `ssc(K.adj = FALSE, G.adj = FALSE)`) / `"hetero"` | `CDOLS()` | `Clustered(:unit [; ssc = :none])` / `Robust()` | b 4e-14, se 1e-14 |

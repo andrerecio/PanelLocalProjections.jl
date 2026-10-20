@@ -63,6 +63,10 @@ function _select_shocks(shock, coefnames, regs)
         names = _names(first(regs))
     else
         names = shock isa AbstractVector ? string.(shock) : [string(shock)]
+        isempty(names) &&
+            throw(ArgumentError("`shock` is empty: name at least one coefficient"))
+        allunique(names) || throw(ArgumentError(
+            "`shock` names a coefficient twice: $(join(repr.(names), ", "))"))
     end
     idx = Int[]
     for nm in names

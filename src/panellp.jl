@@ -19,6 +19,8 @@ the left-hand side of `f` on its right-hand side, absorbing the `fe()` terms.
   `Date`/`DateTime` periods need `frequency` (`:year`, `:halfyear`, `:quarter`, `:month`).
   `fe(time)` and clusters on `time` group by period, not by date.
 - `horizon`: `H` (horizons `0:H`) or a range of consecutive horizons such as `1:6`.
+- `estimator`: [`WithinFE`](@ref) (fixed effects; pooled OLS without them),
+  [`SplitPanelJackknife`](@ref) or [`CDOLS`](@ref).
 - `shock`: coefficient name(s) of the shock; by default the columns of the first
   regressor. Required when the formula has interaction terms and other regressors.
 - `subset`: a Bool column or vector restricting the estimation sample *after* leads and
@@ -51,6 +53,7 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
         "the id column cannot be called `time`, nor the time column `unit`"))
     horizons = _horizons(horizon)
     d = _build_design(f, data; id, time, frequency, subset, clusters, shock)
+    _validate(estimator, d, f)
     d.response isa PlainResponse && horizons != 0:0 &&
         throw(ArgumentError(
             "a plain response is a pre-built outcome and is estimated at horizon 0 only; use " *

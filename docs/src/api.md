@@ -7,6 +7,7 @@ panellp
 PanelLocalProjection
 WithinFE
 SplitPanelJackknife
+CDOLS
 AlternatingProjections
 OneSweep
 ```
