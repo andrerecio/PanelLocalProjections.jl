@@ -57,7 +57,7 @@ Rscript crosscheck/R/<file>.R
 ```
 
 - **Test tags:**
-  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:crosscheck` (with `:stata`/`:r`); `:spj`, `:cdols`, `:tlahr` and `:mc` arrive with later phases;
+  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:spj`, `:mc` (Monte Carlo, ~20 s), `:crosscheck` (with `:stata`/`:r`); `:cdols` and `:tlahr` arrive with later phases;
   - `:mc_full` runs only with `PLP_MC_FULL=1`;
   - `:local_mss` items are skipped automatically when their local data is absent (`test/runtests.jl`).
 - **Formatting:** files that use `@testitem … setup = [...]` start with `#! format: off`, because the SciML style mangles them.
@@ -81,7 +81,7 @@ One module and no submodules. Every struct lives in `src/types.jl`. Include orde
 
 **Invariants:**
 - Never shift by row position. Never drop missing values before shifting. Use NaN, not `missing`.
-- Re-absorb every FE on each horizon's sample and inside each SPJ half.
+- Re-absorb every FE on each horizon's sample and inside each SPJ half. Screen each half for absorbed columns as `_ols` does (`_absorbed_cols`): rescaling a round-off column turns it into an arbitrary coefficient. A failing half makes the horizon `:spj_half_singular`, and with no `:ok` horizon `panellp` throws.
 - A shock absorbed by the FE (e.g. an aggregate shock with `fe(time)`) is never a zero coefficient. It is an error when it happens at every horizon. At some horizons only, those fits are `:singular` with NaN coefficients.
 - Problems at some horizons (empty, singular, omitted regressors, non-convergence) are reported once per `panellp` call (`_fitnotes`) and listed by `show(r)`. Never use `maxlog`, which silences later calls for the rest of the session.
 - Undefined variances (a single cluster or period, no residual df) are NaN with a warning, never an exception. Negative variances give NaN standard errors.

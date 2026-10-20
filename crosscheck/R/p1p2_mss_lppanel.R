@@ -27,10 +27,16 @@ specs <- list(
   mss_spj_unit_robust    = list(method = "SPJ", te = FALSE, tw = FALSE, robust = TRUE,  eig = FALSE),
   mss_spj_te_unit        = list(method = "SPJ", te = TRUE,  tw = FALSE, robust = FALSE, eig = FALSE),
   mss_spj_tw             = list(method = "SPJ", te = FALSE, tw = TRUE,  robust = FALSE, eig = FALSE),
-  mss_spj_tw_robust_eig  = list(method = "SPJ", te = FALSE, tw = TRUE,  robust = TRUE,  eig = TRUE))
+  mss_spj_tw_robust_eig  = list(method = "SPJ", te = FALSE, tw = TRUE,  robust = TRUE,  eig = TRUE),
+  mss_spj_te_unit_robust = list(method = "SPJ", te = TRUE,  tw = FALSE, robust = TRUE,  eig = FALSE),
+  mss_spj_te_tw          = list(method = "SPJ", te = TRUE,  tw = TRUE,  robust = FALSE, eig = FALSE),
+  mss_spj_te_tw_robust_eig = list(method = "SPJ", te = TRUE, tw = TRUE, robust = TRUE, eig = TRUE))
 out <- list()
-for (ds in c("fx_balanced", "fx_unbalanced")) {
-  d <- fread(file.path(root, "test", "fixtures", "synthetic", paste0(ds, ".csv")))
+# fx_balanced_id4 (units 1-4 of fx_balanced): the two-way variances are not PSD there, so
+# eigens = T repairs them
+for (ds in c("fx_balanced", "fx_unbalanced", "fx_balanced_id4")) {
+  d <- fread(file.path(root, "test", "fixtures", "synthetic", paste0(sub("_id4$", "", ds), ".csv")))
+  if (ds == "fx_balanced_id4") d <- d[id <= 4]
   setkey(d, id, t)
   d[, Lx := shiftcol(d, "x", -1)]
   d[, Ly := shiftcol(d, "y", -1)]

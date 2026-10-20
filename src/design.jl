@@ -79,6 +79,13 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
     cols = Tables.columns(data)
     pidx = PanelIndex(_getcol(cols, id), _getcol(cols, time); frequency = frequency)
     n = nrows(pidx)
+    # a column table need not have columns of equal length: check before any lookup
+    function column(v::Symbol)
+        c = _getcol(cols, v)
+        length(c) == n || throw(DimensionMismatch(
+            "column :$v has $(length(c)) rows; the id and time columns have $n"))
+        return c
+    end
 
     response = _rewrite_lhs(f.lhs)
     regs, fes, ireq = _rewrite_rhs(f.rhs)
@@ -90,7 +97,7 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
     foreach(t -> _vars!(vars, t), regs)
     columns = Dict{Symbol, Vector{Float64}}()
     for v in vars
-        c = _getcol(cols, v)
+        c = column(v)
         _isnumericcol(c) || throw(ArgumentError(
             "column :$v is not numeric. Categorical regressors are not supported in v0.1: " *
             "absorb them with fe($v) or build dummy columns"))
@@ -136,7 +143,7 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
         v === id && return pidx.unit
         v === time && return periodcodes
         reserved(v)
-        return _encode(_getcol(cols, v))[1]
+        return _encode(column(v))[1]
     end
 
     fecodes = Vector{Int32}[]

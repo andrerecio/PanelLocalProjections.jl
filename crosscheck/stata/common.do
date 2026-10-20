@@ -14,3 +14,6 @@ if `"$PLP_ROOT"' == "" {
 * Project-local ado tree: installs and lookups never touch the user's PLUS/PERSONAL dirs.
 sysdir set PLUS     "$PLP_ROOT/crosscheck/ado/plus"
 sysdir set PERSONAL "$PLP_ROOT/crosscheck/ado/personal"
+* Re-index Mata libraries (.mlib) now that PLUS/PERSONAL point to the project tree
+* (Stata indexes them only at startup; xtspj and harreg ship compiled libraries).
+quietly mata: mata mlib index

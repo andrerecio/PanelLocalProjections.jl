@@ -39,7 +39,8 @@ Stata session each time (~1–2 s). The exit code is the Stata return code.
 - Outputs are written at full precision: Stata `%21x` or `%21.0g`; R `format(x, digits = 17)`
   or `data.table::fwrite`. Committed outputs go to `test/fixtures/{stata,r}/` and are
   listed with their provenance in `test/fixtures/README.md`.
-- Re-runs are compared numerically (≤ 1e-12), ignoring header lines.
+- A re-run rewrites the committed fixture in place, so `git diff --exit-code test/fixtures`
+  shows any change. Every committed fixture has reproduced byte for byte so far.
 - fixest ≥ 0.13: `ssc(K.adj = , G.adj = )`, explicit `fixef.rm`, explicit `vcov =`.
 - MSS `LP_panel` needs a base `data.frame` (`as.data.frame()` first). It is reliable only in
   its `H = 0` mode with pre-built leads and lags.
@@ -48,6 +49,8 @@ Stata session each time (~1–2 s). The exit code is the Stata return code.
 
 Filled in phase by phase. Each row gives the exact `panellp`/`vcov` options that reproduce
 a reference command: `singletons`, `timelags`, `ssc`, `psd`, `absorb`, `dist`.
+
+### Phase 1: fixed effects
 
 Every row is a committed test (`test/test_crosscheck_p1.jl`), at horizons 0–6 on both
 synthetic panels unless noted. The test requires each reference spec to have its exact
@@ -87,6 +90,7 @@ the largest relative difference over all horizons, terms and panels.
 | R `feols(f(y,h) ~ … \| id [+ t], fixef.rm = "singleton" \| "none")` with `ssc(K.adj = FALSE, G.adj = FALSE)`: cluster, hetero, twoway | drop / keep | `Clustered(...; ssc = :none)`, `Robust(; ssc = :none)`, `Clustered(:unit, :time; ssc = :none, psd = :raw)` | 7e-14 |
 | R `feols(...)`, default `ssc`, `cluster = ~id` | drop / keep | `Clustered(:unit)` | 2e-14 |
 | R `feols(… \| id)` on units 1–4 (`fx_balanced_id4`), `cluster = ~id + t`: not PSD; default `vcov_fix = TRUE` / `vcov_fix = FALSE` | drop | `Clustered(:unit, :time; ssc = :none, psd = :raw \| false)` | 1e-10 (NaN where fixest's variance is negative) |
+| R MSS `LP_panel(…, method = "FE", te, two_way_cluster, robust, eigens)` (H = 0, pre-built leads; h = 0–3, also on `fx_balanced_id4`, where `eigens = T` repairs) | keep; `te = T` ⇒ `fe(id) + fe(t)`, `absorb = OneSweep()` | `Clustered(:unit [, :time]; ssc = :none \| :mss, psd = :none \| :raw)` | 7e-15 (NaN where R's variance is negative) |
 
 (*) At h = 0, 1 on fx_balanced Stata refuses reghdfe's repaired matrix when posting it
 ("variance matrix is nonsymmetric or highly singular") and reports zero standard errors.
@@ -97,4 +101,26 @@ posts a valid matrix, which we match.
 and time effects form one connected component. `panellp` counts the components, as
 reghdfe does. On a sample with disconnected blocks the two differ, so the `xtlp tfe`
 mapping holds for connected samples only.
-| R MSS `LP_panel(…, method = "FE", te, two_way_cluster, robust, eigens)` (H = 0, pre-built leads) | keep; `te = T` ⇒ `fe(id) + fe(t)`, `absorb = OneSweep()` | `Clustered(:unit [, :time]; ssc = :none \| :mss, psd = :none \| :raw)` | 7e-15 |
+
+### Phase 2: split-panel jackknife
+
+Committed tests in `test/test_crosscheck_p2.jl`, at horizons 0–3 on both synthetic panels
+unless noted, with the same checks as Phase 1: row counts, every spec mapped,
+coefficients, standard errors, observations, critical degrees of freedom (not under
+`ase`) and numbers of clusters. The `estimator` is `SplitPanelJackknife()`; the formula
+is that of Phase 1, or `leads(y) ~ x + w` ("no lags": units with two or three rows enter,
+with single-row halves).
+
+| Reference command | `panellp` options | `vcov` spec | Agreement |
+|---|---|---|---|
+| `xtlp …, fe m(spj) vce(…)`: `cluster id [ase]`, `cluster t`, `cluster reg`, `cluster id t [ase]`, `robust`, `dkraay` (default; `lag(2), ase`; `lag(2), nodfadj`), `keepsingletons`; no lags, drop / keep | `fe(id)`, drop / keep | as for `m(fe)` | b 1e-13, se 9e-15 |
+| `xtlp …, tfe m(spj) vce(…)`: `cluster id [ase]`, `cluster t`, `cluster id t, ase`, `robust`, `dkraay lag(2), ase`, `keepsingletons`; no lags, drop / keep | `fe(id) + fe(t)` | as for `m(fe)` | b 1e-13, se 2e-11 |
+| `xtspj …, model(regress) method(parm)` (fx_balanced, h = 1, 3: every unit with the same even number of periods) | `fe(id)` | — (point estimates) | 6e-14 |
+| R MSS `LP_panel(…, method = "SPJ", te, two_way_cluster, robust, eigens)`, also on `fx_balanced_id4` | keep, as for FE | as for FE | 1e-14 (NaN where R's variance is negative) |
+| R MSS notebook, four applications (local data and outputs: `crosscheck/R/mss_apps_local.R`; `test/test_mss_apps.jl`) | plain response, `horizon = 0`, keep (see `docs/src/replication/mss2026.md`) | per application | about 1e-12 |
+| `xtlp …, tfe m(fe \| spj) vce(cluster id, ase) keepsingletons` on the Romer–Romer data (local: `crosscheck/stata/mss_apps_local.do`), the exact two-way columns of the replication page | `fe(id) + fe(t)`, keep, `AlternatingProjections()` | `Clustered(:unit; ssc = :none)` | b 1e-13, se 2e-10 |
+
+`xtlp`'s `vce(unadjusted)` has no counterpart (`panellp` has no homoskedastic variance).
+The variance of the split-panel jackknife is validated by these deterministic
+cross-checks. The Monte Carlo test checks the bias pattern, and coverage within its
+Monte Carlo error.

@@ -129,7 +129,10 @@ function _check_identified(fits::Vector{HorizonFit}, d::PanelDesign, time::Symbo
         "no horizon has observations: at every row the response or a regressor is " *
         "undefined, or only singletons are left (check `horizon`, `subset`, the lags and " *
         "missing values)"))
-    all(f -> f.status in (:empty, :singular), fits) || return nothing
+    any(f -> f.status === :ok, fits) && return nothing
+    any(f -> f.status === :spj_half_singular, fits) && throw(ArgumentError(
+        "no horizon can be estimated: at every horizon the shock is not identified or a " *
+        "split-panel half is rank-deficient ($(_halfcause(fits, d.coefnames)))"))
     f = fits[findfirst(f -> f.status === :singular, fits)]
     absorbed = [d.coefnames[j] for j in d.shockcols if f.absorbed[j]]
     if isempty(absorbed)
@@ -144,6 +147,20 @@ function _check_identified(fits::Vector{HorizonFit}, d::PanelDesign, time::Symbo
         (timefe ?
          " (an aggregate shock with time effects? Interact it with a unit-level " *
          "exposure, or drop the time effects)" : "")))
+end
+
+# Why split-panel halves are rank-deficient: the regressors the fixed effects absorb inside
+# a half (marked in the fits' `absorbed`), or else too few rows.
+function _halfcause(fits::Vector{HorizonFit}, coefnames::Vector{String})
+    hf = [f for f in fits if f.status === :spj_half_singular]
+    names = unique(coefnames[j] for f in hf for j in findall(f.absorbed .& f.keep))
+    isempty(names) &&
+        return "fewer rows than regressors, or collinear regressors, inside a half: too " *
+               "few periods per unit?"
+    # every regressor absorbed: units with a single row in a half
+    allabs = any(f -> any(f.keep) && all(f.absorbed[f.keep]), hf)
+    return "$(join(names, ", ")) absorbed by the fixed effects inside a half" *
+           (allabs ? ": too few periods per unit?" : "")
 end
 
 # "0–3, 5, 7–9"
@@ -176,6 +193,10 @@ function _fitnotes(r::PanelLocalProjection)
     isempty(h) || push!(notes,
         "the shock is absorbed by the fixed effects or collinear in the sample of " *
         "h = $(_hlist(h)); coefficients are NaN")
+    h = hs(f -> f.status === :spj_half_singular)
+    isempty(h) || push!(notes,
+        "a split-panel half is rank-deficient at h = $(_hlist(h)) " *
+        "($(_halfcause(r.fits, r.coefnames))); coefficients are NaN")
     absorbed = (f, j) -> f.absorbed[j]
     collinear = (f, j) -> !f.keep[j] && !f.absorbed[j]
     for (label, pred) in (("absorbed by the fixed effects or the constant", absorbed),

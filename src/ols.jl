@@ -17,19 +17,12 @@ function _eqr(X::Matrix{Float64}, kidx::Vector{Int})
     return LinearAlgebra.qr!(Xk, LinearAlgebra.ColumnNorm()), norms
 end
 
-"""
-    _ols(Xt, yt, Xraw, hasfe, intercept, shockcols) -> NamedTuple
-
-OLS of `yt` on `Xt` (within-transformed when `hasfe`). Returns the coefficients and bread
-`(X̃'X̃)⁻¹` on the kept columns, the kept-column mask, the columns omitted as absorbed by
-the fixed effects or the constant, the residuals, and `status`: `:ok`, or `:singular`
-when a shock column is absorbed or collinear (the other fields are then empty).
-"""
-function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Float64},
-        hasfe::Bool, intercept::Bool, shockcols::Vector{Int})
-    K = size(Xt, 2)
-    absorbed = falses(K)
-    for j in 1:K
+# Columns absorbed by the fixed effects (or the constant), judged against the
+# pre-absorption centred norm, before any rescaling.
+function _absorbed_cols(Xt::AbstractMatrix{Float64}, Xraw::AbstractMatrix{Float64},
+        hasfe::Bool, intercept::Bool)
+    absorbed = falses(size(Xt, 2))
+    for j in axes(Xt, 2)
         x = view(Xraw, :, j)
         μ = Statistics.mean(x)
         css = sum(v -> abs2(v - μ), x)
@@ -40,6 +33,20 @@ function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Flo
             absorbed[j] = sum(abs2, x) == 0 || (intercept && css == 0)
         end
     end
+    return absorbed
+end
+
+"""
+    _ols(Xt, yt, Xraw, hasfe, intercept, shockcols) -> NamedTuple
+
+OLS of `yt` on `Xt` (within-transformed when `hasfe`). Returns the coefficients and bread
+`(X̃'X̃)⁻¹` on the kept columns, the kept-column mask, the columns omitted as absorbed by
+the fixed effects or the constant, the residuals, and `status`: `:ok`, or `:singular`
+when a shock column is absorbed or collinear (the other fields are then empty).
+"""
+function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Float64},
+        hasfe::Bool, intercept::Bool, shockcols::Vector{Int})
+    absorbed = _absorbed_cols(Xt, Xraw, hasfe, intercept)
     keep = .!absorbed
     singular = (; β = Float64[], B = zeros(0, 0), keep, absorbed, resid = Float64[],
         status = :singular)

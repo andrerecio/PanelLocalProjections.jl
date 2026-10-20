@@ -2,6 +2,33 @@
 
 ## Unreleased (0.1.0-DEV)
 
+### Phase 2: split-panel jackknife (Mei, Sheng & Shi 2026)
+- `SplitPanelJackknife(; split = :ceil | :floor)`: per-unit halves of each horizon's
+  sample, every fixed effect re-estimated inside each half, and the variance from the
+  full-sample bread, the SPJ residuals and the scores d = 2X̃ − X̃_half.
+- Cross-checked against:
+  - `xtlp m(spj)`: 22 `fe`/`tfe` × `vce()` specs, including lag-free specs with
+    single-row halves;
+  - `xtspj` (Sun & Dhaene 2019);
+  - the authors' `LP_panel`;
+  - a hand-split identity and an explicit-dummy variance on an unbalanced panel, under
+    both split rules.
+- The authors' four applications are reproduced exactly: Table 1 to 3 decimals, and
+  every horizon to about 1e-12. `xtlp tfe` confirms the exact two-way variant on the
+  Romer–Romer data.
+- Documented what the published numbers depend on:
+  - The Romer–Romer unemployment path uses a one-sweep two-way demeaning, exact only on
+    balanced samples. Exact two-way fixed effects lower the peak SPJ response by about 3%
+    and its standard errors by 12–18%.
+  - The authors' ⌈n/2⌉ split differs from the paper's ⌊n/2⌋. The paper's split moves
+    the Romer–Romer GDP peak from −6.285 to −6.606.
+  - The eigenvalue repair raises the Baron–Verner–Xiong standard errors by up to 13%.
+  - `OneSweep()` and `split = :ceil` reproduce the published numbers.
+- A regressor absorbed inside one half makes the horizon `:spj_half_singular` (NaN)
+  instead of producing an arbitrary estimate.
+- Monte Carlo test of the paper's toy design: FE Nickell bias, SPJ correction, coverage,
+  and the calibration of the SPJ standard error.
+
 ### Phase 1: fixed-effects panel LP and inference
 - `panellp(f, data; id, time, horizon, …)` with `WithinFE()`. Leads, lags and
   differences go through a (unit, period) lookup: they respect gaps and never cross units,

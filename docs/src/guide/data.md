@@ -54,7 +54,9 @@ r = panellp(f, data; id = :firm, time = :quarter, horizon = 8, subset = :post199
 With fixed effects, a row that is alone in its group of some fixed-effect dimension is
 dropped. The removal is repeated until none is left, as `reghdfe` and `xtlp` do.
 `singletons = :keep` keeps them, as `xtreg`, `xtscc`, fixest with `fixef.rm = "none"`, and
-the Mei–Sheng–Shi replication code do. Under exact absorption (the default) point
-estimates are unaffected, but `OneSweep()` estimates are not, because one sweep is not the
-exact within transformation once the sample is unbalanced. The number of observations and
-clusters, and therefore the small-sample factors, change in either case.
+the Mei–Sheng–Shi replication code do. Under exact absorption (the default) `WithinFE`
+point estimates are unaffected. `OneSweep()` estimates are affected, because one sweep is
+not the exact within transformation once the sample is unbalanced. So are
+`SplitPanelJackknife` estimates with fixed effects other than the unit: a singleton in
+another dimension still counts in its unit's rows and so moves the halves. The number of
+observations and clusters, and therefore the small-sample factors, change in every case.

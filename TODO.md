@@ -41,10 +41,17 @@ The full design and the rationale for every convention are in the approved plan.
 - Not covered by the test suite: the Makie extension (exercised by the docs build only)
 
 ## Phase 2: Split-panel jackknife (Mei–Sheng–Shi)
-- [ ] `SplitPanelJackknife(split = :ceil | :floor)`; halves re-absorbed and never dropping rows; D-score variance
-- [ ] Cross-checks: xtlp `m(spj)`, xtspj (balanced, even n_h), MSS `LP_panel(method = "SPJ")`
-- [ ] MSS applications (local): exact n per h, Table 1 peaks to 3 decimals, EPS paths within 1e-3, R notebook calls at 1e-9
-- [ ] Monte Carlo smoke run of the toy design (ρ = 0.8, N = 30, T = 60)
+- [x] `SplitPanelJackknife(split = :ceil | :floor)`; halves re-absorbed, never dropping rows, screened for absorbed columns; D-score variance
+- [x] Cross-checks: xtlp `m(spj)` (22 specs, b 1e-13, se 2e-11 tfe), xtspj (balanced, even n_h; 6e-14), MSS `LP_panel(method = "SPJ")` incl. `te = T` and the eigens repair (1e-14); hand-split identity and explicit-dummy variance on fx_unbalanced (`:ceil`, `:floor`)
+- [x] MSS applications (local): exact n per h, Table 1 peaks to 3 decimals, the authors' notebook calls at about 1e-12
+  (the EPS-extracted paths are not used: they come from the same R code, which is reproduced exactly).
+  Deviations from the plan: BVX uses `psd = :raw` (the plan said `:stata`), which is what `eigens = T` does;
+  the xtlp help examples on the `.dta` files are deferred (no `.dta` outputs exist yet)
+- [x] xtlp `tfe` on the Romer–Romer data (local) confirms the exact two-way FE/SPJ columns of the replication page
+- [x] Monte Carlo smoke run of the toy design (ρ = 0.8, N = 30, T = 60; 300 replications; FE and SPJ means, coverage, SPJ SE calibration at h = 1, 5)
+- [x] Docs: `methods/spj.md`, `replication/mss2026.md` (one-sweep, split rule, eigens repair), `audit/mss_r.md`
+- [x] Adversarial review (4 lenses, verified findings) addressed
+- [x] Phase 2 gate; commit
 
 ## Phase 3: Cumulative-difference OLS (Ugarte-Ruiz)
 - [ ] `CDOLS(validate = true)` and its validation rules

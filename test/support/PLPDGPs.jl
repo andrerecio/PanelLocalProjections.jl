@@ -292,6 +292,45 @@ function fx_tlahr_unbal()
     return _select(cols, keep)
 end
 
+"""
+    mss_toy(rng; N = 30, T = 60, ρ = 0.8, β = -0.6, δ = 0.2, η = 0.2)
+
+One draw of the Mei–Sheng–Shi (2026) main-text Monte Carlo design (their `simul_LP.R`,
+lagY = 0, as used for Figures 1–3 and `toy_-0.6.xlsx`):
+
+    x_it = δ + ρ x_{i,t-1} + u_it,   x_i0 ~ N(0, 1) (no burn-in)
+    y_it = α_i + β x_it + ε_it,      α_i = η √T x̄_i + χ
+
+with u, ε ~ N(0, 1), x̄_i the mean of x_i1..x_iT, and χ ~ N(0, 1) one draw per replication
+(as in their code). The true response of y_{t+h} to x_t is β ρ^h. Not a committed fixture:
+the Monte Carlo tests draw from it.
+"""
+function mss_toy(rng; N = 30, T = 60, ρ = 0.8, β = -0.6, δ = 0.2, η = 0.2)
+    x = Matrix{Float64}(undef, T, N)
+    for i in 1:N
+        xp = randn(rng)
+        for t in 1:T
+            xp = δ + ρ * xp + randn(rng)
+            x[t, i] = xp
+        end
+    end
+    χ = randn(rng)
+    id = Int[]
+    tt = Int[]
+    ys = Float64[]
+    xs = Float64[]
+    for i in 1:N
+        α = η * sqrt(T) * _seqmean(view(x, :, i)) + χ
+        for t in 1:T
+            push!(id, i)
+            push!(tt, t)
+            push!(xs, x[t, i])
+            push!(ys, α + β * x[t, i] + randn(rng))
+        end
+    end
+    return (id = id, t = tt, y = ys, x = xs)
+end
+
 "Name → generator for every committed synthetic fixture."
 const FIXTURES = (fx_balanced = fx_balanced, fx_unbalanced = fx_unbalanced,
     fx_dated = fx_dated, fx_cdols = fx_cdols, fx_tlahr = fx_tlahr,

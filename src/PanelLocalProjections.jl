@@ -32,7 +32,7 @@ using Tables: Tables
 
 export panellp, PanelLocalProjection, PanelLPVcov, IRFSummary, @formula
 export leads, ldiff, anchor, cumul, lags, firstdiff, fe
-export WithinFE, AlternatingProjections, OneSweep
+export WithinFE, SplitPanelJackknife, AlternatingProjections, OneSweep
 export Robust, Clustered, DriscollKraaySE
 export summarize, coefpath, nobspath, horizons, esample
 export coef, coefnames, vcov, stderror, nobs

@@ -119,6 +119,29 @@ formula; pooled OLS with an intercept when there are none.
 """
 struct WithinFE <: PanelLPEstimator end
 
+"""
+    SplitPanelJackknife(; split = :ceil)
+
+Split-panel jackknife correction of the fixed-effects estimator (Mei, Sheng & Shi 2026,
+eq. 16): θ̂ = 2θ̂_full − ½(θ̂_a + θ̂_b). The halves are formed per unit on each horizon's
+estimation sample, from its rows in time order:
+
+- `split = :ceil` puts the first ⌈n_i/2⌉ rows in half a, as the authors' R code and
+  `xtlp` do;
+- `split = :floor` puts the first ⌊n_i/2⌋ there, the paper's 𝒯_a = {t ≤ T_h/2}.
+
+Every fixed effect, time effects included, is re-estimated inside each half. The variance
+uses the full-sample bread, the SPJ residuals and the scores d = 2X̃ − X̃_half, which
+reduce to the paper's d* on balanced panels with an even number of periods. Requires a
+unit fixed effect, `fe(id)`. A horizon where a half is rank-deficient (a regressor
+absorbed inside it) is `:spj_half_singular`, with NaN coefficients.
+"""
+struct SplitPanelJackknife <: PanelLPEstimator
+    split::Symbol
+    SplitPanelJackknife(split::Symbol) = new(_check_option(split, (:ceil, :floor), "split"))
+end
+SplitPanelJackknife(; split::Symbol = :ceil) = SplitPanelJackknife(split)
+
 # ---------------------------------------------------------------------------------------
 # Fixed-effect absorption (absorb.jl)
 # ---------------------------------------------------------------------------------------
@@ -217,7 +240,8 @@ end
 struct HorizonFit
     h::Int
     # :ok; :empty (no observations); :singular (a shock is absorbed by the fixed effects or
-    # collinear in this horizon's sample). Coefficients are NaN unless :ok.
+    # collinear in this horizon's sample); :spj_half_singular (a split-panel half is
+    # rank-deficient). Coefficients are NaN unless :ok.
     status::Symbol
     coef::Vector{Float64}     # NaN for omitted coefficients
     keep::BitVector           # coefficient estimated (not omitted)

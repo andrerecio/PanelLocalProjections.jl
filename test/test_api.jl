@@ -123,6 +123,11 @@ end
     rp = panellp(f, map(v -> v[perm], b); id = :id, time = :t, horizon = 1)
     @test coef(rp, 1) ≈ coef(r, 1) rtol = 1e-12
     @test vcov(DriscollKraaySE(3), rp).V[2] ≈ vcov(DriscollKraaySE(3), r).V[2] rtol = 1e-12
+    # columns of a different length than id and time (a column table does not check)
+    short = merge(b, (; w = b.w[1:10]))
+    @test_throws DimensionMismatch panellp(f, short; id = :id, time = :t, horizon = 0)
+    @test_throws DimensionMismatch panellp(@formula(leads(y) ~ x + fe(g)), merge(b, (; g = [1, 2]));
+        id = :id, time = :t, horizon = 0)
     # clusters as strings
     @test panellp(f, b; id = :id, time = :t, horizon = 0, clusters = "reg").groupnames ==
           [:unit, :time, :reg]
@@ -167,6 +172,7 @@ end
     y = PLP._lhs_at(d.response, PLP._EvalContext(d.pidx, d.columns), 1)
     mask = d.rhsok .& isfinite.(y)
     @test (@inferred PLP._fit_horizon(WithinFE(), d, 1, y, mask, 0, AP)).status === :ok
+    @test (@inferred PLP._fit_horizon(SplitPanelJackknife(), d, 1, y, mask, 0, AP)).status === :ok
     @test (@inferred vcov(Clustered(:unit, :time), r)) isa PanelLPVcov
     @test (@inferred vcov(DriscollKraaySE(), r)) isa PanelLPVcov
     @test (@inferred summarize(r, vcov(Robust(), r))) isa IRFSummary

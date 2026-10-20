@@ -226,7 +226,8 @@ end
         "mss_fe_tw" => (["id"], AP, Clustered(:unit, :time; ssc = :none, psd = false)),
         "mss_fe_tw_robust_eig" => (["id"], AP, Clustered(:unit, :time; ssc = :mss, psd = :raw)),
         "mss_te_tw" => (["id", "t"], OS, Clustered(:unit, :time; ssc = :none, psd = false)))
-    for (spec, (fes, ab, vc)) in specs, ds in ("fx_balanced", "fx_unbalanced")
+    # fx_balanced_id4: units 1–4, where the two-way variances are not PSD
+    for (spec, (fes, ab, vc)) in specs, ds in ("fx_balanced", "fx_unbalanced", "fx_balanced_id4")
         r = estimate(ds, "leads(y)", fes; singletons = :keep, absorb = ab)
         cv = vcov(vc, r)
         rows = filter(x -> x.dataset == ds && x.spec == spec, ref)
@@ -234,7 +235,13 @@ end
         for x in rows
             k = parse(Int, x.h) + 1
             @test coef(r, k - 1)[1] ≈ _num(x.b) rtol = 1e-12
-            @test sqrt(cv.V[k][1, 1]) ≈ _num(x.se) rtol = 1e-12
+            if isnan(_num(x.se))    # R's sqrt of a negative variance
+                @test cv.V[k][1, 1] < 0
+            else
+                @test sqrt(cv.V[k][1, 1]) ≈ _num(x.se) rtol = 1e-12
+            end
         end
     end
+    r4 = estimate("fx_balanced_id4", "leads(y)", ["id"]; singletons = :keep)
+    @test any(i -> i.psdfixed, vcov(Clustered(:unit, :time; ssc = :mss, psd = :raw), r4).info)
 end

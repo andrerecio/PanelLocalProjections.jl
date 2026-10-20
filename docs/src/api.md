@@ -6,6 +6,7 @@
 panellp
 PanelLocalProjection
 WithinFE
+SplitPanelJackknife
 AlternatingProjections
 OneSweep
 ```
