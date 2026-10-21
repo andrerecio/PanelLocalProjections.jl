@@ -64,15 +64,23 @@ The full design and the rationale for every convention are in the approved plan.
 - [x] Phase 3 gate; commit
 
 ## Phase 4: t-LAHR (Almuzara–Sancibrián)
-- [ ] `LagAugmented(ICLags | CappedLags | ConstantLags)`; synthetic AIC/BIC (B.3/B.4)
-- [ ] `TLAHR(refine)`: CR0 by time; HC2 on synthetic regressors (thin SVD); IK ν with contrast e_k; exposure residualisation
-- [ ] `CosineHAR`, `synthetic`, `lagorder`
-- [ ] Cross-checks: xtlp `vce(cluster t, ase)`; Stata `regress, vce(hc2, dfadjust)` (`e(adj_df)`); harreg; A&S `panel_LP.R` grid
-- [ ] Monte Carlo smoke run of the stylized Table 1 design (`:mc_full` locally)
+- [x] `LagAugmented(ICLags | CappedLags | ConstantLags)`; synthetic AIC/BIC (B.3/B.4)
+- [x] `TLAHR(refine, weights)`: CR0 by time; HC2 on synthetic regressors (thin SVD); IK ν with contrast e_k; exposure residualisation
+- [x] `CosineHAR`, `synthetic`, `lagorder`
+- [x] Cross-checks: A&S `panel_LP.R` grid (672 rows, 2e-12 / 2e-9); Stata `reghdfe` (the lag-augmented regression, CR1 by time; 2e-14, unbalanced se 5e-12), `regress, vce(hc2, dfadjust)` (`e(adj_df)`) and harreg on the synthetic regression (3e-14).
+  The plan's xtlp `vce(cluster t, ase)` check is covered by reghdfe and by the identity `TLAHR(refine = false)` = `Clustered(:time; ssc = :none)`
+- [x] Monte Carlo smoke run of the stylized Table 1 design (`:mc`); paper-size `:mc_full` run locally
+- [x] Scale benchmark: `LagAugmented(ICLags())` 19 s and `TLAHR()` 0.7 s on 1.1M rows and 21 horizons, max RSS 2.6 GB; `CappedLags()` (up to 5 lags each) 25 s, 3.2 GB. Both above the 2 GB target of the fixed-effects run (1.6 GB): transient copies of the design in the criterion's six h = 0 fits and in every fit
+- [x] Docs: `methods/tlahr.md`, `audit/as_code.md` (bugs B1–B4 verified by running the code). `audit/tidymacro.md` moves to Phase 5 (its findings need a source check)
+- [x] Adversarial review (4 lenses, 35 findings, verified) addressed: rank-revealing per-period residualisation and exact zero weights (a crash in plain fits), weights residualised on every same-aggregate regressor and structural ownership, synthetic regression weighted by ω_t (CR2 by period) and ω-weighted criterion, numeric lag deduplication and lag priority in the collinearity screen, closed-form ν linear in T, messages, tests (CR2 oracle, paired Monte Carlo assertions), docs (sensitivity section)
+- [x] Phase 4 gate: `Pkg.test()` on 1.12 and 1.10 (35709 tests), format, fixtures, docs build, p4 R/Stata fixtures byte-identical, ado manifest
+- [x] Commit
+- [ ] Later (research): exact CR2 by period on the panel regression, an alternative to the synthetic regression when unit-level controls or lags of time-varying exposures make it conservative (`methods/tlahr.md`)
 
 ## Phase 5: Documentation, audit, release
-- [ ] Guide, methods and cross-check pages; audit pages (MSS R, A&S code, xtlp, Ugarte-Ruiz, Ramey, tidyMacro); `deviations.md`
+- [ ] Guide, methods and cross-check pages; audit pages (xtlp, Ramey, tidyMacro); `deviations.md`
 - [ ] `replication/firm_level_wip.md` (OW20 and the JL24 reduced form; CFFS23 and the JL24 IV blocked on LP-IV)
+- [ ] Memory: fewer transient copies of the design per fit (`_within_fit`: Xraw, A, Xt, Xk, the scores and `_eqr`'s copy), to bring `LagAugmented(ICLags())` (2.6 GB) and `CappedLags()` (3.2 GB) at scale under 2 GB
 - [ ] Full cross-check re-run from an empty `crosscheck/ado`; strict docs build; version 0.1.0
 
 ## After v0.1

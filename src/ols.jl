@@ -37,15 +37,16 @@ function _absorbed_cols(Xt::AbstractMatrix{Float64}, Xraw::AbstractMatrix{Float6
 end
 
 """
-    _ols(Xt, yt, Xraw, hasfe, intercept, shockcols) -> NamedTuple
+    _ols(Xt, yt, Xraw, hasfe, intercept, shockcols, added = Int[]) -> NamedTuple
 
 OLS of `yt` on `Xt` (within-transformed when `hasfe`). Returns the coefficients and bread
 `(X̃'X̃)⁻¹` on the kept columns, the kept-column mask, the columns omitted as absorbed by
 the fixed effects or the constant, the residuals, and `status`: `:ok`, or `:singular`
-when a shock column is absorbed or collinear (the other fields are then empty).
+when a shock column is absorbed or collinear (the other fields are then empty). Among
+collinear columns, those in `added` (lags added by `LagAugmented`) are omitted first.
 """
 function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Float64},
-        hasfe::Bool, intercept::Bool, shockcols::Vector{Int})
+        hasfe::Bool, intercept::Bool, shockcols::Vector{Int}, added::Vector{Int} = Int[])
     absorbed = _absorbed_cols(Xt, Xraw, hasfe, intercept)
     keep = .!absorbed
     singular = (; β = Float64[], B = zeros(0, 0), keep, absorbed, resid = Float64[],
@@ -57,8 +58,12 @@ function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Flo
     d = abs.(LinearAlgebra.diag(F.R))
     rank = count(>(_RANK_TOL * d[1]), d)
     if rank < length(kidx)
-        for j in kidx[F.p[(rank + 1):end]]
-            keep[j] = false
+        if any(j -> keep[j], added)
+            _dropcollinear!(keep, Xt, added)
+        else
+            for j in kidx[F.p[(rank + 1):end]]
+                keep[j] = false
+            end
         end
         any(j -> !keep[j], shockcols) && return singular
         kidx = findall(keep)
@@ -74,4 +79,39 @@ function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Flo
     B[p, p] = A
     B ./= norms .* norms'
     return (; β, B, keep, absorbed, resid, status = :ok)
+end
+
+# Collinear columns among the kept ones, omitting those in `added` rather than the others:
+# the pivoted QR of the other columns first; then that of the `added` columns (unit norm)
+# residualised on them, at the same tolerance.
+function _dropcollinear!(keep::BitVector, Xt::Matrix{Float64}, added::Vector{Int})
+    isadded = falses(length(keep))
+    isadded[added] .= true
+    fidx = findall(keep .& .!isadded)
+    if !isempty(fidx)
+        F, _ = _eqr(Xt, fidx)
+        d = abs.(LinearAlgebra.diag(F.R))
+        for j in fidx[F.p[(count(>(_RANK_TOL * d[1]), d) + 1):end]]
+            keep[j] = false
+        end
+        fidx = findall(keep .& .!isadded)
+    end
+    aidx = findall(keep .& isadded)
+    R = Xt[:, aidx]
+    for c in axes(R, 2)
+        nc = LinearAlgebra.norm(view(R, :, c))
+        nc > 0 && (R[:, c] ./= nc)
+    end
+    if !isempty(fidx)
+        # in the coordinates of the Q of the kept columns, the residuals on them are the
+        # rows after the first length(fidx)
+        F, _ = _eqr(Xt, fidx)
+        R = (F.Q' * R)[(length(fidx) + 1):end, :]
+    end
+    Fa = LinearAlgebra.qr!(R, LinearAlgebra.ColumnNorm())
+    d = abs.(LinearAlgebra.diag(Fa.R))
+    for j in aidx[Fa.p[(count(>(_RANK_TOL), d) + 1):end]]
+        keep[j] = false
+    end
+    return keep
 end

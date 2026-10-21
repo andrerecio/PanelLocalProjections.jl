@@ -51,3 +51,76 @@
         @test abs(mean(ses[:SPJ][:, h + 1]) / std(est[:SPJ][:, h + 1]) - 1) <= 3 / sqrt(2R)
     end
 end
+
+@testmodule Table1 begin
+    # Almuzara & Sancibrián (2026) Table 1: coverage of 90% intervals at h = 0, 1, 2, 5,
+    # T = 30, N = 1500, ρ = 0.7, 5000 replications.
+    const REF = Dict(
+        0.9 => (oneway = (0.494, 0.372, 0.344, 0.376), twoway = (0.819, 0.726, 0.725, 0.811),
+            dk = (0.716, 0.725, 0.695, 0.782), plain = (0.851, 0.842, 0.811, 0.806),
+            recommended = (0.903, 0.899, 0.872, 0.875)),
+        0.1 => (oneway = (0.888, 0.878, 0.866, 0.880), twoway = (0.841, 0.829, 0.814, 0.820),
+            dk = (0.809, 0.791, 0.789, 0.810), plain = (0.848, 0.849, 0.836, 0.835),
+            recommended = (0.903, 0.902, 0.891, 0.895)))
+    const RREF = 5000
+    coverage(out, k) = vec(sum(reduce(hcat, getfield.(out, k)); dims = 2)) ./ length(out)
+end
+
+@testitem "A&S stylized design: t-LAHR coverage (Table 1)" tags = [:mc, :tlahr] setup = [TLAHRSupport, Table1] begin
+    using .TLAHRSupport: stylized, table1
+    using .Table1: REF, RREF, coverage
+    using Logging, StableRNGs, Statistics
+    # Reduced to N = 200 and R = 300: the calibration σ_u² = N(1 − R̄²)/R̄² (their fn 10)
+    # keeps the macro share of the variation as N changes. R̄² = 0.9.
+    R = 300
+    rng = StableRNG(20261031)
+    out = with_logger(NullLogger()) do
+        [table1(stylized(rng)) for _ in 1:R]
+    end
+    ref = REF[0.9]
+    tol(c) = 4 * sqrt(c * (1 - c) * (1 / R + 1 / RREF))
+    for k in (:plain, :recommended)
+        for (p, c) in zip(coverage(out, k), getfield(ref, k))
+            @test abs(p - c) <= tol(c)
+        end
+    end
+    # unit clustering fails with a strong macro signal, the recommendation does not
+    @test all(coverage(out, :oneway) .<= 0.6)
+    @test all(coverage(out, :recommended) .- coverage(out, :oneway) .>= 0.3)
+    @test all(coverage(out, :recommended) .>= coverage(out, :twoway) .- 0.03)
+    # the refinement on the same draws: a paired comparison, whose Monte Carlo error is far
+    # below that of a cell (the published gain is .052–.069; without the Imbens–Kolesár df
+    # it falls to about .03)
+    gain = coverage(out, :recommended) .- coverage(out, :plain)
+    @test all(gain .>= 0) && mean(gain) >= 0.045
+    # the AIC rule mostly picks one lag (the design is a VAR(1))
+    @test mean(getfield.(out, :phat) .== 1) >= 0.6
+end
+
+@testitem "A&S stylized design: Table 1 at the paper's size" tags = [:mc_full, :tlahr] setup = [TLAHRSupport, Table1] begin
+    using .TLAHRSupport: stylized, table1
+    using .Table1: REF, RREF, coverage
+    using Logging, StableRNGs, Statistics
+    # N = 1500, R = 2000; both calibrations of σ_u² at R̄² = 0.9 (which one reproduces the
+    # unit-cluster row tells which the paper used). Reported with @info.
+    R = 2000
+    for (R2, cal) in ((0.9, :fn10), (0.9, :exact), (0.1, :fn10))
+        rng = StableRNG(20261101)
+        out = with_logger(NullLogger()) do
+            [table1(stylized(rng; N = 1500, R2, cal)) for _ in 1:R]
+        end
+        ref = REF[R2]
+        rows = Dict(k => coverage(out, k) for k in (:oneway, :twoway, :dk, :plain, :recommended))
+        fmt(v) = join((string(round(x; digits = 3)) for x in v), ", ")
+        @info "Table 1, R̄² = $R2, calibration $cal" oneway = fmt(rows[:oneway]) twoway = fmt(rows[:twoway]) dk = fmt(rows[:dk]) plain = fmt(rows[:plain]) recommended = fmt(rows[:recommended]) share_p1 = mean(getfield.(out, :phat) .== 1)
+        cal === :fn10 || continue
+        tol(c) = max(0.03, 3.5 * sqrt(c * (1 - c) * (1 / R + 1 / RREF)))
+        for k in (:plain, :recommended), (p, c) in zip(rows[k], getfield(ref, k))
+            @test abs(p - c) <= tol(c)
+        end
+        if R2 == 0.9
+            @test all(rows[:recommended] .>= rows[:twoway] .- 0.03)
+            @test all(rows[:recommended] .>= rows[:oneway] .- 0.03)
+        end
+    end
+end

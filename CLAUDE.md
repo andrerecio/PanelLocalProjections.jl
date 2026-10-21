@@ -58,14 +58,14 @@ Rscript crosscheck/R/<file>.R
 ```
 
 - **Test tags:**
-  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:spj`, `:cdols`, `:mc` (Monte Carlo, ~30 s in all), `:crosscheck` (with `:stata`/`:r`); `:tlahr` arrives with Phase 4;
-  - `:mc_full` runs only with `PLP_MC_FULL=1`;
+  - `:core`, `:aqua`, `:fixtures`, `:panel`, `:formula`, `:absorb`, `:ols`, `:vcov`, `:api`, `:spj`, `:cdols`, `:tlahr`, `:mc` (Monte Carlo, ~45 s in all), `:crosscheck` (with `:stata`/`:r`);
+  - `:mc_full` runs only with `PLP_MC_FULL=1` (the Almuzara–Sancibrián Table 1 at the paper's size: ~15 min);
   - `:local_mss` items are skipped automatically when their local data is absent (`test/runtests.jl`).
 - **Formatting:** files that use `@testitem … setup = [...]` start with `#! format: off`, because the SciML style mangles them.
 - **Kaimon.** When the `mcp__kaimon__*` tools are available, use the live REPL (session for this repo via `start_session(project_path = …)`, then `ex`) instead of spawning `julia` for exploration. Revise picks up `src/` edits automatically, but a struct change in `src/types.jl` needs `manage_repl(command = "restart")`. Load test-only packages and the fixtures with `pushfirst!(LOAD_PATH, joinpath(pkgdir(PanelLocalProjections), "dev"))` and `include("test/support/PLPDGPs.jl")` (`read_csv`). `run_tests` runs the whole suite, because TestItemRunner ignores its pattern argument.
-- **Scale benchmark:** `julia --project=. -e 'push!(LOAD_PATH, "dev"); include("dev/benchmark_scale.jl")'` (about 15 s; Phase 1 reference: 12.8 s, 14 sweeps per horizon and 1.6 GB max RSS for 1.1M rows and 21 horizons).
+- **Scale benchmark:** `julia --project=. -e 'push!(LOAD_PATH, "dev"); include("dev/benchmark_scale.jl")'` (about 70 s; `PLP_BENCH=fe`, `tlahr` or `capped` runs one part, for its own max RSS). Reference for 1.1M rows and 21 horizons: fixed effects 13.5 s, 14 sweeps per horizon, 1.6 GB max RSS (Phase 1: 12.8 s); `LagAugmented(ICLags())` 19 s and `TLAHR()` 0.7 s, 2.6 GB; `LagAugmented(CappedLags())` 25 s, 3.2 GB (Phase 4).
 
-## Architecture (Phases 1–3 implemented; later phases per `docs/notes/design/approved_plan.md`)
+## Architecture (Phases 1–4 implemented; later phases per `docs/notes/design/approved_plan.md`)
 
 One module and no submodules. Every struct lives in `src/types.jl`. Include order: `utils` → `types` → `panelindex` → `formula` → `design` → `absorb` → `ols` → `scores` → `lagselect` → `estimators` → `panellp` → `vcov` → `summary` → `plotting`; Makie lives in `ext/`.
 
@@ -88,12 +88,15 @@ One module and no submodules. Every struct lives in `src/types.jl`. Include orde
 - Undefined variances (a single cluster or period, no residual df) are NaN with a warning, never an exception. Negative variances give NaN standard errors.
 - Estimator-specific specification checks run before estimation (`_validate(estimator, design, formula)` in `estimators.jl`). `CDOLS` enforces Ugarte-Ruiz's rules, structurally (`_collags` dates every column; the shock's lag is found numerically by `_haslag`): a long-difference response, each shock dated right after the base period with its first lag among the regressors, outcomes only lagged beyond the response's start and differenced when the response differences them, and no FE nested in the units (also per horizon sample, in `_fit_horizon(::CDOLS)`). `validate = false` skips them.
 - DK, EWC and t-LAHR aggregate scores by calendar period.
+- `LagAugmented` appends lag columns once (`_with_lags`: a lag equal to an existing column, whatever its name, is not added; `lagorder` per column) and fits each horizon on its active columns (lags ≤ p(h)); inactive coefficients are NaN and are not reported as omitted (`HorizonFit.active`). When the fit is rank-deficient, added lags are dropped before formula columns (`_ols(…, added)`), silently.
+- Exposure structure is per column (`PanelDesign.aggseries`, `exposures`); `owner` (`_owners`) maps each coefficient to the synthetic regression it uses: a shock and its lags → the shock; another aggregate series × exposure → itself; the rest → the first shock. Every non-SPJ fit stores one `SyntheticSeries` per kept owner: weights = exposure residualised per period on time-nested FE and on the exposures of every kept regressor of the same aggregate series (`_sameagg`; never by solving, `_projresid!`), so labels in `shock` don't matter; a period whose residualised exposure is round-off gets weight exactly 0. `TLAHR()` takes the leverage of √ω_t X̄_t (CR2 by period on rank-one designs); `weights = :raw` is the authors' unweighted X̄ with the raw exposure.
 
 **Compat switches** exist only where a published number depends on them:
 - `OneSweep()`: the one-pass two-way demeaning of the MSS R code;
 - `ssc = :mss`;
 - `SplitPanelJackknife(split = :floor)`;
 - `CappedLags`: the A&S code's lag rule;
+- `TLAHR(weights = :raw)`: the A&S code's synthetic regression (raw exposure, unweighted periods);
 - `timelags = :position`: xtlp/xtscc DK.
 
 The map from each reference command to the matching Julia options is in `crosscheck/README.md`.

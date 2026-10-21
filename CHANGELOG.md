@@ -2,6 +2,85 @@
 
 ## Unreleased (0.1.0-DEV)
 
+### Phase 4: t-LAHR inference (Almuzara & Sancibrián 2026)
+- `LagAugmented(rule)`: at each horizon, p(h) lags of the outcome (y, Δy for `ldiff`, g
+  for `cumul(g)`) and of every shock column are added to the fixed-effects regression,
+  which needs unit effects (or finer ones nested in the units, e.g. firm × state).
+  The rules:
+  - `ICLags()`, the default: max{1, min(h, p̂)}, with p̂ chosen by AIC or BIC on the
+    synthetic time series (the paper's eq. 15, fn 11 and supplement B.3–B.4). The choices
+    the paper leaves open are pinned and documented.
+  - `CappedLags(pmax)`: min(h, pmax), the authors' code.
+  - `ConstantLags(p)`.
+- `lagorder(r)` returns p(h); `r.lags`, a `LagSelection`, holds the criterion.
+- `TLAHR(; refine = true, weights = :residual)`:
+  - `refine = false` is CR0 clustered by period (eq. 11) with normal critical values.
+  - `refine = true` adds HC2 on the synthetic regression and Student-t critical values
+    with each coefficient's Imbens–Kolesár degrees of freedom (supplement B.2), from a
+    thin SVD and a closed form without eigendecomposition or T × T matrix.
+  - The synthetic weights are the exposure residualised per period (the paper's ŝ_i, and
+    the exposures of the other regressors of the same aggregate series), and the
+    synthetic regression is weighted by ω_t = Σ_i ŝ_it² (fn 24): with every regressor an
+    aggregate series times the exposure, HC2 is then CR2 clustered by period, and ν its
+    Bell–McCaffrey degrees of freedom. `weights = :raw` is the authors' code.
+  - The exposure structure (an aggregate series times unit-level variables, lags
+    included) is detected for every regressor, from the formula and the data. Each
+    coefficient uses one synthetic regression: its shock's, its own, or the first
+    shock's.
+- `CosineHAR(B = :llsw)`: equal-weighted cosine variance of the period sums of the
+  scores, as Stata's `harreg`.
+- `synthetic(r, h)` returns the synthetic series of a shock.
+- Cross-checked against:
+  - the authors' `panel_LP.R`, run on our synthetic panels (672 rows): within 2e-12 on
+    the balanced panel (estimates; standard errors 1e-13) and 2e-9 on the unbalanced
+    one. The exception is their degrees-of-freedom bug with two exposures (e₁ contrast),
+    which is verified and documented;
+  - Stata: `reghdfe` for the lag-augmented regression (2e-14; the unbalanced panel's
+    standard errors 5e-12), and `regress …, vce(hc2, dfadjust)` (HC2 and Bell–McCaffrey
+    df, `e(adj_df)`) and `harreg` (EWC) on the synthetic regression (3e-14).
+- Monte Carlo of the paper's stylized design (Table 1): coverage of unit, two-way,
+  Driscoll–Kraay, plain and recommended t-LAHR intervals. At the paper's size (N = 1500,
+  2000 replications, the `:mc_full` item) every row is within 0.04 of the published
+  one. The recommended intervals cover 0.87–0.91 (published 0.87–0.90), and the
+  footnote 10 calibration of σ_u² reproduces the unit-cluster row. A reduced version
+  runs in the suite.
+- Docs: `methods/tlahr.md` (with a sensitivity section), `audit/as_code.md`. The bugs of
+  the authors' code are verified by running it on synthetic inputs.
+
+Fixes from the adversarial review of Phase 4:
+- **A crash in plain fixed-effects fits.** The synthetic weights solved a square system per
+  period, which threw on valid data with two exposures of one shock (e.g. group dummies
+  with a period of one unit), in every non-jackknife fit. The residualisation is now a
+  rank-revealing projection, and a period whose residualised exposure is round-off has
+  weight exactly zero. Round-off weights had made the refinement NaN at every horizon and
+  corrupted the information criterion.
+- **Label independence.** The weights are residualised on the exposures of every
+  regressor of the same aggregate series, not only on the declared shocks, so the
+  inference no longer depends on `shock`. Ownership is structural: `s2 & L1.X` uses the
+  synthetic regression of the shock `s2 & X` (it had NaN degrees of freedom).
+- **Unbalanced panels.** The synthetic regression is weighted by ω_t (above); the
+  unweighted form gave small periods the leverage of full ones and overstated ν. The
+  information criterion averages ξ̄_t² with the same weights, which the periods with few
+  units dominated.
+- **Lags.** A lag already among the regressors under another name (`s & L1.X` for the
+  shock `s & L0.X`) is not added again: the duplicate had made horizons singular. A lag
+  that the formula's columns span gives way to them in the collinearity screen, so the
+  user's coefficients stay. The criterion counts only the lags a candidate adds, so lags of
+  the outcome written in the formula change neither p̂ nor p(h).
+- **Numerics and messages.** The degrees of freedom need memory linear in T (a T × T matrix
+  took 2.9 GB at T = 8000). Specific messages for a cosine variance with B ≥ T, a
+  `synthetic` call on a jackknife fit, a criterion sample emptied by `pmax`, and a shock
+  absorbed by time effects under `ICLags`. A shock written `lags(s & X, 0:1)` is an
+  exposure.
+- **Tests.** An exact CR2 oracle, the zero-weight periods, the joint variance with its
+  covariances, the default `pmax`, the criterion's variants on unbalanced data, and
+  paired assertions in the Table 1 Monte Carlo that catch a missing half of the
+  refinement.
+- The scale benchmark (1.1M rows, 21 horizons) also runs `LagAugmented(ICLags())` with
+  `TLAHR()`: 19 s and 0.7 s, 2.6 GB max RSS; and the authors' rule, `CappedLags()` (up to
+  5 lags each of the outcome and of the shock): 25 s and 3.2 GB. The fixed-effects run:
+  13.5 s, 1.6 GB.
+
 ### Phase 3: cumulative-difference OLS (Ugarte-Ruiz 2026)
 - `CDOLS(; validate = true)`: pooled OLS of the long difference y_{t+h} − y_{t−1} on the
   shock and its lag. The specification rules are checked structurally, whatever the

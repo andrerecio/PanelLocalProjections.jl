@@ -5,7 +5,8 @@
 function _empty_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int;
         status::Symbol = :empty, nobs::Int = 0, keep::BitVector = falses(length(d.coefnames)),
         absorbed::BitVector = falses(length(d.coefnames)), iterations::Int = 0,
-        converged::Bool = true)
+        converged::Bool = true, active::BitVector = trues(length(d.coefnames)),
+        nlags::Int = 0)
     K = length(d.coefnames)
     G = length(d.groups)
     D = length(d.fe)
@@ -14,29 +15,45 @@ function _empty_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int;
     stats = ScoreStats(zeros(K, K), [zeros(ng, K) for ng in d.ngroups],
         Tuple{Int, Int}[], Matrix{Float64}[], Symbol[])
     return HorizonFit(h, status, fill(NaN, K), keep, absorbed, fill(NaN, K, K),
-        fill(NaN, K), mask, falses(d.ngroups[2]), dof, stats, iterations, converged)
+        fill(NaN, K), mask, falses(d.ngroups[2]), dof, stats, iterations, converged,
+        active, nlags, SyntheticSeries[])
 end
 
-# Within transformation, OLS and score statistics on the rows of `mask`.
+"""
+    _within_fit(d, y, mask, absorb, cols = all columns) -> NamedTuple
+
+Within transformation and OLS on the rows of `mask` and the columns `cols` (ascending, the
+shocks among them). `keep`, `absorbed` and `xsd` are over all columns of the design;
+`Xk` holds the within-transformed kept columns, `β` and `B` their coefficients and bread.
+"""
 function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
-        absorb::AbsorptionMethod)
+        absorb::AbsorptionMethod, cols::Vector{Int} = collect(axes(d.X, 2)))
     rows = findall(mask)
-    Xraw = d.X[rows, :]
+    Xraw = d.X[rows, cols]
     A = hcat(y[rows], Xraw)
     fs = _fe_sample(d.fe, rows)
     it, conv = _absorb_matrix!(A, fs, absorb)
     yt = A[:, 1]
     Xt = A[:, 2:end]
-    o = _ols(Xt, yt, Xraw, !isempty(d.fe), d.intercept, d.shockcols)
-    return merge(o, (; rows, Xt, yt, fs, xsd = _xsd(Xraw, d.intercept), iterations = it,
-        converged = conv))
+    shocks = Int[something(findfirst(==(j), cols)) for j in d.shockcols]
+    # lags added by LagAugmented give way to the formula's columns when collinear
+    added = Int[k for (k, j) in enumerate(cols) if d.lagorder[j] > 0]
+    o = _ols(Xt, yt, Xraw, !isempty(d.fe), d.intercept, shocks, added)
+    K = length(d.coefnames)
+    keep, absorbed, xsd = falses(K), falses(K), fill(NaN, K)
+    keep[cols] = o.keep
+    absorbed[cols] = o.absorbed
+    xsd[cols] = _xsd(Xraw, d.intercept)
+    return (; o.β, o.B, keep, absorbed, o.resid, o.status, rows, Xk = Xt[:, o.keep], yt,
+        fs, xsd, iterations = it, converged = conv)
 end
 
 function _singular_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int, w;
-        status::Symbol = :singular)
+        status::Symbol = :singular, active::BitVector = trues(length(d.coefnames)),
+        nlags::Int = 0)
     return _empty_fit(d, h, mask, singletons; status, nobs = length(w.rows),
         keep = w.keep, absorbed = w.absorbed, iterations = w.iterations,
-        converged = w.converged)
+        converged = w.converged, active, nlags)
 end
 
 function _dofinfo(d::PanelDesign, rows::Vector{Int}, fs::_FESample, k::Int,
@@ -78,16 +95,155 @@ end
 """
 function _fit_horizon(::WithinFE, d::PanelDesign, h::Int, y::Vector{Float64},
         mask::BitVector, singletons::Int, absorb::AbsorptionMethod)
-    any(mask) || return _empty_fit(d, h, mask, singletons)
-    w = _within_fit(d, y, mask, absorb)
-    w.status === :singular && return _singular_fit(d, h, mask, singletons, w)
-    U = w.Xt[:, w.keep] .* w.resid
+    return _fit_within(d, h, y, mask, singletons, absorb, collect(axes(d.X, 2)), 0)
+end
+
+# Fixed-effects fit of horizon h on the columns `cols`, with the synthetic series of the
+# shocks.
+function _fit_within(d::PanelDesign, h::Int, y::Vector{Float64}, mask::BitVector,
+        singletons::Int, absorb::AbsorptionMethod, cols::Vector{Int}, nlags::Int)
+    active = falses(length(d.coefnames))
+    active[cols] .= true
+    any(mask) || return _empty_fit(d, h, mask, singletons; active, nlags)
+    w = _within_fit(d, y, mask, absorb, cols)
+    w.status === :singular &&
+        return _singular_fit(d, h, mask, singletons, w; active, nlags)
+    U = w.Xk .* w.resid
     groups = [view(g, w.rows) for g in d.groups]
     stats, present = _score_stats(U, w.keep, groups, d.ngroups)
     dof = _dofinfo(d, w.rows, w.fs, count(w.keep), present, singletons)
     coef, bread = _expand(w.β, w.B, w.keep)
-    return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask,
-        _present(groups[2], d.ngroups[2]), dof, stats, w.iterations, w.converged)
+    timepresent = _present(groups[2], d.ngroups[2])
+    return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask, timepresent,
+        dof, stats, w.iterations, w.converged, active, nlags,
+        _synthetic(d, w, groups[2], timepresent))
+end
+
+"""
+    _shockweights(d, j, rows, keep) -> (w, raw)
+
+Weights of the synthetic regression of column j (an aggregate series times an exposure)
+on the rows `rows`: its exposure residualised per period on an intercept when a fixed
+effect nested in the periods is absorbed (demeaned within its groups: Almuzara &
+Sancibrián's ŝ_i), and on the exposures of the other kept regressors (`keep`) that
+multiply the same aggregate series, shocks or not (by Frisch–Waugh–Lovell, the variation
+that identifies coefficient j); and the raw exposure. A period whose residualised exposure
+is round-off (sum of squares at most 1e-20 of the raw exposure's, e.g. no more units than
+exposures to residualise on) has weight zero.
+"""
+function _shockweights(d::PanelDesign, j::Int, rows::Vector{Int},
+        keep::AbstractVector{Bool})
+    e = d.exposures[j][rows]
+    others = Int[l
+                 for l in eachindex(d.exposures)
+                 if l != j && keep[l] && _sameagg(d.aggseries[l], d.aggseries[j])]
+    isempty(d.timefe) && isempty(others) && return e, e
+    A = Matrix{Float64}(undef, length(rows), 1 + length(others))
+    A[:, 1] = e
+    for (c, l) in enumerate(others)
+        A[:, c + 1] = view(d.exposures[l], rows)
+    end
+    isempty(d.timefe) ||
+        _absorb_matrix!(A, _fe_sample(d.fe[d.timefe], rows), AlternatingProjections())
+    w = A[:, 1]
+    per = view(d.pidx.period, rows)
+    isempty(others) || _perperiod_resid!(w, view(A, :, 2:size(A, 2)), per)
+    ss = zeros(nspan(d.pidx), 2)
+    for i in eachindex(w, e)
+        k = per[i] - d.pidx.pmin + 1
+        ss[k, 1] += w[i]^2
+        ss[k, 2] += e[i]^2
+    end
+    for i in eachindex(w)
+        k = per[i] - d.pidx.pmin + 1
+        ss[k, 1] <= 1e-20 * ss[k, 2] && (w[i] = 0.0)
+    end
+    return w, e
+end
+
+# w minus its projection on the columns of Z, period by period (`per`).
+function _perperiod_resid!(w::Vector{Float64}, Z::AbstractMatrix{Float64},
+        per::AbstractVector{<:Integer})
+    order = sortperm(per)
+    n = length(order)
+    i = 1
+    while i <= n
+        k = i
+        while k < n && per[order[k + 1]] == per[order[i]]
+            k += 1
+        end
+        rr = order[i:k]
+        _projresid!(view(w, rr), Z[rr, :])
+        i = k + 1
+    end
+    return w
+end
+
+# w minus its projection on the span of the columns of Z: a pivoted QR of the columns
+# scaled to unit norm, of rank at the tolerance of `_ols` (never a solve, which a singular
+# block would make fail).
+function _projresid!(w::AbstractVector{Float64}, Z::Matrix{Float64})
+    for c in axes(Z, 2)
+        nc = LinearAlgebra.norm(view(Z, :, c))
+        nc > 0 && (Z[:, c] ./= nc)
+    end
+    F = LinearAlgebra.qr!(Z, LinearAlgebra.ColumnNorm())
+    r = count(>(_RANK_TOL), abs.(LinearAlgebra.diag(F.R)))
+    r == 0 && return w
+    Q = F.Q * Matrix{Float64}(LinearAlgebra.I, size(Z, 1), r)
+    w .-= Q * (Q' * w)
+    return w
+end
+
+# Σ_{r∈t} w_r z_r per period (rows of `tpos`, 1:T) for each column of Z.
+function _persums(Z::AbstractVecOrMat{Float64}, w::Vector{Float64}, tpos::Vector{Int},
+        T::Int)
+    S = zeros(T, size(Z, 2))
+    @inbounds for c in axes(Z, 2), r in axes(Z, 1)
+
+        S[tpos[r], c] += w[r] * Z[r, c]
+    end
+    return S
+end
+
+# Per-period weighted means Σ w z / Σ w², over the periods present; `zero` where a period
+# has no weight.
+function _wmeans(Z, w::Vector{Float64}, tpos::Vector{Int}, ω::Vector{Float64}, zero)
+    S = _persums(Z, w, tpos, length(ω))
+    for t in eachindex(ω)
+        S[t, :] .= ω[t] > 0 ? S[t, :] ./ ω[t] : zero
+    end
+    return S
+end
+
+# Synthetic series of every kept coefficient that owns a synthetic regression
+# (`PanelDesign.owner`; Almuzara & Sancibrián 2026, Remark 1; supplement B.2), from a fit's
+# within-transformed data. Columns that the weights annihilate (the other exposures of the
+# same aggregate series, on balanced panels) are round-off, which the rank tolerance of
+# `_ikdesign` drops.
+function _synthetic(d::PanelDesign, w, tcodes::AbstractVector{Int32},
+        timepresent::BitVector)
+    out = SyntheticSeries[]
+    pos = zeros(Int, length(timepresent))
+    pos[timepresent] = 1:count(timepresent)
+    tpos = [pos[c] for c in tcodes]
+    T = count(timepresent)
+    K = length(d.coefnames)
+    kidx = findall(w.keep)
+    for j in sort!(unique(d.owner))
+        (j > 0 && w.keep[j]) || continue
+        wt, raw = _shockweights(d, j, w.rows, w.keep)
+        ω = vec(_persums(wt, wt, tpos, T))
+        ωraw = vec(_persums(raw, raw, tpos, T))
+        X = fill(NaN, T, K)
+        X[:, kidx] = _wmeans(w.Xk, wt, tpos, ω, 0.0)
+        Xraw = fill(NaN, T, K)
+        Xraw[:, kidx] = _wmeans(w.Xk, raw, tpos, ωraw, 0.0)
+        push!(out,
+            SyntheticSeries(j, ω, X, vec(_wmeans(w.yt, wt, tpos, ω, NaN)),
+                vec(_wmeans(w.resid, wt, tpos, ω, NaN)), Xraw))
+    end
+    return out
 end
 
 # Half (1 or 2) of each estimation row: per unit, rows in time order, the first ⌈n_i/2⌉
@@ -134,7 +290,7 @@ function _fit_horizon(est::SplitPanelJackknife, d::PanelDesign, h::Int,
     w.status === :singular && return _singular_fit(d, h, mask, singletons, w)
     kidx = findall(w.keep)
     half = _spj_halves(d.pidx, w.rows, est.split)
-    Xt = w.Xt[:, kidx]
+    Xt = w.Xk
     Xhalf = similar(Xt)
     θ = Vector{Vector{Float64}}(undef, 2)
     iterations, converged = w.iterations, w.converged
@@ -171,7 +327,8 @@ function _fit_horizon(est::SplitPanelJackknife, d::PanelDesign, h::Int,
     dof = _dofinfo(d, w.rows, w.fs, count(w.keep), present, singletons)
     coef, bread = _expand(βspj, w.B, w.keep)
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask,
-        _present(groups[2], d.ngroups[2]), dof, stats, iterations, converged)
+        _present(groups[2], d.ngroups[2]), dof, stats, iterations, converged,
+        trues(length(w.keep)), 0, SyntheticSeries[])
 end
 
 # ---------------------------------------------------------------------------------------
@@ -344,4 +501,33 @@ function _fit_horizon(est::CDOLS, d::PanelDesign, h::Int, y::Vector{Float64},
         end
     end
     return fit
+end
+
+# Almuzara & Sancibrián (2026): the response is a lead of the outcome, whose lags are
+# added; the regression has unit effects.
+function _validate(::LagAugmented, d::PanelDesign, f)
+    d.response isa PlainResponse && throw(ArgumentError(
+        "LagAugmented adds lags of the outcome: write the response as leads(y), ldiff(y), " *
+        "cumul(g) or anchor(y, z), not a pre-built column"))
+    # unit effects, or finer ones nested in the units (e.g. firm × state), whose dummies
+    # span the unit dummies
+    nested(codes) = (rows = findall(!=(0), codes);
+        !isempty(rows) &&
+            _isnested(codes[rows], Int(maximum(codes)), view(d.pidx.unit, rows)))
+    any(nested, d.fe) || throw(ArgumentError(
+        "LagAugmented needs unit fixed effects, fe(<id column>) or a finer fixed effect " *
+        "nested in the units (e.g. fe(id) & fe(state)): the Almuzara–Sancibrián " *
+        "regression has unit effects"))
+    return nothing
+end
+
+# Columns of horizon h: the formula's, and the lags up to p(h).
+function _activecols(est::_ResolvedLags, d::PanelDesign, h::Int)
+    findall(<=(est.lags[h - first(est.horizons) + 1]), d.lagorder)
+end
+
+function _fit_horizon(est::_ResolvedLags, d::PanelDesign, h::Int, y::Vector{Float64},
+        mask::BitVector, singletons::Int, absorb::AbsorptionMethod)
+    return _fit_within(d, h, y, mask, singletons, absorb, _activecols(est, d, h),
+        est.lags[h - first(est.horizons) + 1])
 end

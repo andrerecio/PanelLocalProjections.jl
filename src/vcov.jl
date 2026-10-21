@@ -29,6 +29,18 @@ function DriscollKraaySE(bw = :nw94; ssc::Symbol = :stata, timelags::Symbol = :c
     return DriscollKraaySE(bw, 0, ssc, timelags)
 end
 
+TLAHR(; refine::Bool = true, weights::Symbol = :residual) = TLAHR(refine, weights)
+
+function CosineHAR(B = :llsw)
+    B isa Integer && return CosineHAR(:fixed, Int(B))
+    B === :llsw || throw(ArgumentError("B must be :llsw or a number of cosine terms"))
+    return CosineHAR(:llsw, 0)
+end
+
+# Number of cosine terms of CosineHAR(:llsw) for T periods: ⌊0.41 T^{2/3}⌋, as harreg
+# (har_utils.mata), computed the same way in double precision (T = 1000 gives 40).
+_llsw(T::Int) = floor(Int, 0.41 * T^(2 / 3))
+
 """
     _dk_lags(rule, T) -> m
 
@@ -51,6 +63,13 @@ end
 function _label(s::DriscollKraaySE)
     "DriscollKraaySE($(s.rule === :fixed ? s.lags : repr(s.rule)); ssc = :$(s.ssc)$(s.timelags === :position ? ", timelags = :position" : ""))"
 end
+function _label(s::TLAHR)
+    opts = String[]
+    s.refine || push!(opts, "refine = false")
+    s.weights === :residual || push!(opts, "weights = :$(s.weights)")
+    return "TLAHR($(join(opts, ", ")))"
+end
+_label(s::CosineHAR) = "CosineHAR($(s.rule === :llsw ? ":llsw" : s.B))"
 
 function _dimindex(r::PanelLocalProjection, d::Symbol)
     nm = d === r.panel.id ? :unit : d === r.panel.time ? :time : d
@@ -183,6 +202,168 @@ function _vcov_parts(s::DriscollKraaySE, r, fit::HorizonFit, ::Nothing)
     return M, c, defined ? df : NaN, VcovInfo(c, 0, T, m, false)
 end
 
+# t-LAHR without the refinement: CR0 by period, normal critical values (A&S eq. 11);
+# defined where Clustered(:time; ssc = :none) is.
+function _vcov_parts(s::TLAHR, r, fit::HorizonFit, ctx)
+    T = count(fit.timepresent)
+    defined = T > 1 && fit.dof.nobs - fit.dof.k - fit.dof.df_a > 0
+    c = _finite_or_nan(1.0, defined)
+    return _meat1(fit, 2), c, defined ? Inf : NaN, VcovInfo(c, T, T, 0, false)
+end
+
+# Number of cosine terms and calendar periods (first to last of the sample) of a fit.
+function _cosineterms(s::CosineHAR, fit::HorizonFit)
+    T = findlast(fit.timepresent) - findfirst(fit.timepresent) + 1
+    return s.rule === :llsw ? _llsw(T) : s.B, T
+end
+
+# Fewer cosine terms than periods are needed (B = ⌊0.41 T^{2/3}⌋ is 0 for T ≤ 3).
+function _sandwich(s::CosineHAR, r, fit::HorizonFit, ctx, kidx::Vector{Int})
+    B, T = _cosineterms(s, fit)
+    nk = length(kidx)
+    1 <= B < T ||
+        return fill(NaN, nk, nk), fill(NaN, nk), VcovInfo(NaN, 0, T, B, false), :bandwidth
+    return _plain_sandwich(s, r, fit, ctx, kidx)
+end
+
+# Equal-weighted cosine variance of the period sums of the scores, over the calendar
+# periods from the first to the last of the sample (harreg's EWC: Λ_j = √2 Σ_t
+# cos(πj(t − ½)/T) S_t, Ω = Σ_j Λ_j Λ_j' / B, no small-sample factor, t(B)).
+function _vcov_parts(s::CosineHAR, r, fit::HorizonFit, ::Nothing)
+    present = fit.timepresent
+    g = fit.scores.S[2][findfirst(present):findlast(present), :]
+    B, T = _cosineterms(s, fit)
+    defined = 1 <= B < T && fit.dof.nobs - fit.dof.k - fit.dof.df_a > 0
+    M = zeros(size(g, 2), size(g, 2))
+    if defined
+        Φ = [sqrt(2) * cos(π * j * (t - 0.5) / T) for j in 1:B, t in 1:T]
+        Λ = Φ * g
+        M = (Λ' * Λ) ./ B
+    end
+    c = _finite_or_nan(1.0, defined)
+    return M, c, defined ? Float64(B) : NaN, VcovInfo(c, 0, T, B, false)
+end
+
+# t-LAHR: every coefficient uses the synthetic regression of its owner (`r.owner`, from
+# `_owners`). With the refinement, every estimated coefficient needs one, so every shock
+# must be an aggregate series times an exposure.
+function _prepare(s::TLAHR, r::PanelLocalProjection)
+    r.estimator isa SplitPanelJackknife && throw(ArgumentError(
+        "TLAHR is the inference of a lag-augmented fixed-effects regression, not of the " *
+        "split-panel jackknife; use Clustered or DriscollKraaySE"))
+    if s.refine
+        for f in r.fits
+            f.status === :ok || continue
+            for j in findall(f.keep)
+                o = r.owner[j]
+                (o > 0 && any(sy -> sy.col == o, f.synthetic)) && continue
+                bad = [nm
+                       for (k, nm) in enumerate(r.coefnames)
+                       if nm in r.shocks && r.owner[k] == 0]
+                which = join(repr.(isempty(bad) ? r.shocks[1:1] : bad), ", ")
+                throw(ArgumentError(
+                    "TLAHR(refine = true) needs every shock to be an aggregate " *
+                    "series, or an aggregate series times a unit-level exposure " *
+                    "(s & X); $which is neither. TLAHR(refine = false) is the CR0 " *
+                    "variance clustered by period"))
+            end
+        end
+    end
+    return (; owner = r.owner)
+end
+
+"""
+    _ikdesign(X) -> NamedTuple or nothing
+
+Synthetic regression of the HC2/Imbens–Kolesár refinement (A&S supplement B.2): from the
+thin SVD of the synthetic regressors (T × K; their cross-product is never formed), keeping
+the singular values above max(T, K)·eps·σ₁, the leverages h_t and the residual-maker
+diagonal d_t = 1 − h_t. `nothing` when a period has leverage one (d_t ≈ 0) or a regressor
+is not finite.
+"""
+function _ikdesign(X::Matrix{Float64})
+    all(isfinite, X) || return nothing
+    T, K = size(X)
+    F = LinearAlgebra.svd(X)
+    tol = max(T, K) * eps() * (isempty(F.S) ? 0.0 : F.S[1])
+    r = count(>(tol), F.S)
+    U = F.U[:, 1:r]
+    h = vec(sum(abs2, U; dims = 2))
+    d = 1 .- h
+    minimum(d; init = 1.0) > 1e-10 || return nothing
+    return (; d, h, U, Sr = F.S[1:r], V = F.V[:, 1:r])
+end
+
+# Bell–McCaffrey/Imbens–Kolesár degrees of freedom of coefficient c (column of X̄), with the
+# homoskedastic reference: ν = (Σλ)²/Σλ² for the eigenvalues λ of G'G, G_{·t} = M̄_{·t}
+# a_t/√d_t, a = X̄(X̄'X̄)⁺e_c, M̄ = I − UU'. Since G'G = D M̄ D with D = diag(a/√d),
+# Σλ = Σ_t a_t² and Σλ² = Σ_{t,s} b_t b_s M̄_ts², b = a²/d: the diagonal Σ_t b_t² d_t², and
+# off it Σ_{t≠s} b_t b_s (UU')_ts² = ‖U' diag(b) U‖²_F − Σ_t b_t² h_t². No
+# eigendecomposition, and no T × T matrix. The contrast is e_c of each coefficient (the
+# authors' code uses e₁ for every coefficient).
+function _iknu(des, c::Int)
+    a = des.U * (des.V[c, :] ./ des.Sr)
+    b = a .^ 2 ./ des.d
+    off = sum(abs2, des.U' * (b .* des.U)) - sum(abs2, b .* des.h)
+    den = sum(abs2, b .* des.d) + max(off, 0.0)
+    return den > 0 ? sum(abs2, a)^2 / den : NaN
+end
+
+# Variance, per-coefficient critical df, details and flag (:ok, :undefined, :negfactor or
+# :leverage) of one horizon, on the kept coefficients `kidx`.
+function _sandwich(spec::PanelVcov, r, fit::HorizonFit, ctx, kidx::Vector{Int})
+    _plain_sandwich(spec, r, fit, ctx, kidx)
+end
+
+# c · B M B with the meat, factor and df of `_vcov_parts`.
+function _plain_sandwich(spec::PanelVcov, r, fit::HorizonFit, ctx, kidx::Vector{Int})
+    M, c, df, info = _vcov_parts(spec, r, fit, ctx)
+    nk = length(kidx)
+    isnan(c) && return fill(NaN, nk, nk), fill(NaN, nk), info, :undefined
+    B = fit.bread[kidx, kidx]
+    Vk = c .* (B * M[kidx, kidx] * B)
+    return (Vk + Vk') ./ 2, fill(df, nk), info, c < 0 ? :negfactor : :ok
+end
+
+"""
+t-LAHR with the refinement (A&S supplement B.2). Each owner k (`_owners`: a shock, or
+another aggregate series times an exposure) has its synthetic regression (stored by the
+fit): the per-period means X̄⁽ᵏ⁾_t weighted by ω⁽ᵏ⁾_t (fn 24), so with rows √ω_t X̄_t, whose
+leverage is that of the period in the panel regression when every regressor is an
+aggregate series times the exposure (HC2 is then CR2 clustered by period); unweighted X̄_t
+with the raw exposure for `weights = :raw`, as the authors' code. With residual-maker
+diagonal d⁽ᵏ⁾_t and z⁽ʲ⁾_t = (B S_t)_j / √d⁽ᶜ⁽ʲ⁾⁾_t for coefficient j of owner c(j),
+V_jl = Σ_t z⁽ʲ⁾_t z⁽ˡ⁾_t: the paper's HC2 variance B (Σ_t S_t S_t'/d_t) B for every
+coefficient's own variance, and positive semi-definite. Each coefficient has its own
+Imbens–Kolesár df, from `_iknu`.
+"""
+function _sandwich(s::TLAHR, r, fit::HorizonFit, ctx::NamedTuple, kidx::Vector{Int})
+    s.refine || return _plain_sandwich(s, r, fit, ctx, kidx)
+    T = count(fit.timepresent)
+    nk = length(kidx)
+    info = VcovInfo(1.0, T, T, 0, false)
+    nan = (fill(NaN, nk, nk), fill(NaN, nk), VcovInfo(NaN, T, T, 0, false))
+    (T > 1 && fit.dof.nobs - fit.dof.k - fit.dof.df_a > 0) || return (nan..., :undefined)
+    S = fit.scores.S[2][fit.timepresent, kidx]
+    G = S * fit.bread[kidx, kidx]
+    designs = Dict{Int, Any}()
+    for o in unique(ctx.owner[kidx])
+        sy = fit.synthetic[findfirst(x -> x.col == o, fit.synthetic)]
+        X̄ = s.weights === :raw ? sy.Xraw[:, kidx] : sqrt.(sy.weight) .* sy.X[:, kidx]
+        des = _ikdesign(X̄)
+        des === nothing && return (nan..., :leverage)
+        designs[o] = des
+    end
+    Z = similar(G)
+    dfs = fill(NaN, nk)
+    for (c, j) in enumerate(kidx)
+        des = designs[ctx.owner[j]]
+        Z[:, c] = G[:, c] ./ sqrt.(des.d)
+        dfs[c] = _iknu(des, c)
+    end
+    return Z' * Z, dfs, info, :ok
+end
+
 _psdmetric(s::Clustered) = length(s.dims) == 2 ? s.psd : :none
 _psdmetric(s::PanelVcov) = :none
 
@@ -211,9 +392,10 @@ end
     vcov(spec::PanelVcov, r::PanelLocalProjection) -> PanelLPVcov
 
 Variance of the coefficients at every horizon, for a [`Robust`](@ref),
-[`Clustered`](@ref) or [`DriscollKraaySE`](@ref) specification. Omitted coefficients have
-NaN rows and columns. Horizons where the variance is undefined (a single cluster or
-period, or no residual degrees of freedom) are NaN, with a warning; so are, in the
+[`Clustered`](@ref), [`DriscollKraaySE`](@ref), [`TLAHR`](@ref) or [`CosineHAR`](@ref)
+specification. Omitted coefficients have NaN rows and columns. Horizons where the variance
+is undefined (a single cluster or period, no residual degrees of freedom, or a period with
+leverage one in the t-LAHR synthetic regression) are NaN, with a warning; so are, in the
 standard errors, negative variances of a two-way variance without PSD repair.
 """
 function StatsAPI.vcov(spec::PanelVcov, r::PanelLocalProjection)
@@ -223,7 +405,8 @@ function StatsAPI.vcov(spec::PanelVcov, r::PanelLocalProjection)
     Vs = Matrix{Float64}[]
     dfs = Vector{Float64}[]
     infos = VcovInfo[]
-    undefined, negfactor, negvar = Int[], Int[], Int[]
+    undefined, leverage, negfactor, negvar = Int[], Int[], Int[], Int[]
+    bandwidth = Tuple{Int, Int, Int}[]
     for fit in r.fits
         V = fill(NaN, K, K)
         if fit.status !== :ok
@@ -233,15 +416,14 @@ function StatsAPI.vcov(spec::PanelVcov, r::PanelLocalProjection)
             continue
         end
         kidx = findall(fit.keep)
-        M, c, df, info = _vcov_parts(spec, r, fit, ctx)
+        Vk, dk, info, flag = _sandwich(spec, r, fit, ctx, kidx)
         fixed = false
-        if isnan(c)
-            push!(undefined, fit.h)
+        if flag === :bandwidth
+            push!(bandwidth, (fit.h, info.lags, info.periods))
+        elseif flag === :undefined || flag === :leverage
+            push!(flag === :undefined ? undefined : leverage, fit.h)
         else
-            c < 0 && push!(negfactor, fit.h)
-            B = fit.bread[kidx, kidx]
-            Vk = c .* (B * M[kidx, kidx] * B)
-            Vk = (Vk + Vk') ./ 2
+            flag === :negfactor && push!(negfactor, fit.h)
             if metric !== :none
                 icol = r.intercept && fit.keep[1] ? 1 : nothing
                 Vk, fixed = metric === :stata ? _psd_clip(Vk, fit.xsd[kidx], icol) :
@@ -252,14 +434,23 @@ function StatsAPI.vcov(spec::PanelVcov, r::PanelLocalProjection)
         end
         push!(Vs, V)
         d = fill(NaN, K)
-        d[kidx] .= df
+        d[kidx] .= dk
         push!(dfs, d)
         push!(infos, VcovInfo(info.factor, info.groups, info.periods, info.lags, fixed))
     end
     label = _label(spec)
+    isempty(bandwidth) ||
+        @warn "$label needs fewer cosine terms than periods (1 ≤ B < T, T the periods " *
+              "from the first to the last of the sample): B = $(bandwidth[1][2]) and " *
+              "T = $(bandwidth[1][3]) at h = $(bandwidth[1][1]); it is NaN at " *
+              "h = $(_hlist(first.(bandwidth)))"
     isempty(undefined) ||
         @warn "$label is undefined at h = $(_hlist(undefined)) (a single " *
               "cluster or period, or no residual degrees of freedom); it is NaN there"
+    isempty(leverage) ||
+        @warn "$label: a period has leverage one in the synthetic regression at " *
+              "h = $(_hlist(leverage)) (too few periods for the regressors?); the " *
+              "variance is NaN there"
     isempty(negfactor) || @warn "$label: the Mei–Sheng–Shi two-way factor is negative at " *
           "h = $(_hlist(negfactor)) (n ≤ N + K, with N the units in the data)"
     isempty(negvar) || @warn "$label has negative variances at h = $(_hlist(negvar)); " *

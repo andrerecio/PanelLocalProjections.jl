@@ -12,9 +12,10 @@ makedocs(;
     pages = ["Home" => "index.md",
         "Guide" => ["guide/example.md", "guide/data.md", "guide/formula.md",
             "guide/inference.md"],
-        "Methods" => ["methods/absorption.md", "methods/spj.md", "methods/cdols.md"],
+        "Methods" => ["methods/absorption.md", "methods/spj.md", "methods/cdols.md",
+            "methods/tlahr.md"],
         "Replications" => ["replication/mss2026.md", "replication/ugarte2026.md"],
-        "Audit" => ["audit/mss_r.md", "audit/ugarte.md"],
+        "Audit" => ["audit/mss_r.md", "audit/ugarte.md", "audit/as_code.md"],
         "API" => "api.md"],
     checkdocs = :exports,
     # docs/paper, docs/references and docs/notes are local, gitignored reference

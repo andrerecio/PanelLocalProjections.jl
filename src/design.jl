@@ -114,13 +114,16 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
         @warn "the fixed effects absorb the intercept; `1 +` is ignored"
     blocks = Matrix{Float64}[]
     coefnames = String[]
+    termof = Tuple{Int, Int}[]               # per column: (term, column within the term)
     if intercept
         push!(blocks, ones(n, 1))
         push!(coefnames, "(Intercept)")
+        push!(termof, (0, 1))
     end
-    for t in regs
+    for (k, t) in enumerate(regs)
         push!(blocks, _cols(t, ctx))
         append!(coefnames, _names(t))
+        append!(termof, ((k, c) for c in 1:size(blocks[end], 2)))
     end
     isempty(blocks) && throw(ArgumentError("the formula has no regressors"))
     X = reduce(hcat, blocks)
@@ -182,9 +185,173 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
         push!(ngroups, G)
     end
 
+    none = (Float64[], Float64[])
+    exps = [termof[j][1] == 0 ? none :
+            _exposure(regs[termof[j][1]], termof[j][2], view(X, :, j), ctx)
+            for j in axes(X, 2)]
+    aggseries, exposures = first.(exps), last.(exps)
+    timefe = [k for (k, c) in enumerate(fecodes) if _timenested(c, periodcodes)]
+
     return PanelDesign(pidx, response, _respname(response), columns, X, coefnames,
         shockcols, intercept, rhsok, fecodes, fenames, groups, groupnames, ngroups,
-        _subsetmask(subset, cols, n))
+        _subsetmask(subset, cols, n), aggseries, exposures,
+        _owners(coefnames, shockcols, exposures), timefe, zeros(Int, length(coefnames)))
+end
+
+# Whether a fixed-effect dimension is nested in the periods (time, or group × time).
+function _timenested(codes::Vector{Int32}, periodcodes::Vector{Int32})
+    rows = findall(!=(0), codes)
+    return _isnested(codes[rows], Int(maximum(codes; init = Int32(0))),
+        view(periodcodes, rows))
+end
+
+# Whether `x` is an aggregate series: equal across units in every period (where defined).
+function _isaggregate(x::AbstractVector{Float64}, pidx::PanelIndex)
+    ref = fill(NaN, nspan(pidx))
+    @inbounds for r in eachindex(x)
+        v = x[r]
+        isfinite(v) || continue
+        k = pidx.period[r] - pidx.pmin + 1
+        a = ref[k]
+        if isnan(a)
+            ref[k] = v
+        elseif v != a && abs(v - a) > 1e-12 * max(abs(v), abs(a))
+            return false
+        end
+    end
+    return true
+end
+
+# Factor columns of column c of a product with factor widths `w` (first factor slowest,
+# as `_rowkron`).
+function _kronindex(w::Vector{Int}, c::Int)
+    idx = similar(w)
+    r = c - 1
+    for m in length(w):-1:1
+        idx[m] = r % w[m] + 1
+        r ÷= w[m]
+    end
+    return idx
+end
+
+# Per calendar period of the span, the value of an aggregate column (equal across units in
+# every period); NaN where no row of the period has one.
+function _perperiod(x::AbstractVector{Float64}, pidx::PanelIndex)
+    a = fill(NaN, nspan(pidx))
+    @inbounds for r in eachindex(x)
+        v = x[r]
+        k = pidx.period[r] - pidx.pmin + 1
+        isfinite(v) && isnan(a[k]) && (a[k] = v)
+    end
+    return a
+end
+
+"""
+    _exposure(term, c, x, ctx) -> (aggregate series, exposure)
+
+Exposure structure of column `x` (column `c` of `term`): an aggregate series (equal across
+units in every period) has exposure 1; an interaction with aggregate factors has the
+product of the other factors as exposure, and the product of the aggregate ones as its
+aggregate series; a lag of such an interaction lags both. The aggregate series is per
+calendar period (`_perperiod`), the exposure per data row. Two empty vectors for any
+other column (e.g. a unit-level variable).
+"""
+function _exposure(t, c::Int, x::AbstractVector{Float64}, ctx::_EvalContext)
+    _isaggregate(x, ctx.pidx) && return _perperiod(x, ctx.pidx), ones(length(x))
+    return _factorexposure(t, c, ctx, 0)
+end
+
+_factorexposure(t, c::Int, ctx::_EvalContext, l::Int) = (Float64[], Float64[])
+function _factorexposure(t::LagsTerm, c::Int, ctx::_EvalContext, l::Int)
+    k, j = divrem(c - 1, length(_names(t.term)))   # columns: lags outer, inner columns
+    return _factorexposure(t.term, j + 1, ctx, l + t.lags[k + 1])
+end
+function _factorexposure(t::ProductTerm, c::Int, ctx::_EvalContext, l::Int)
+    pidx = ctx.pidx
+    facs = [_cols(f, ctx) for f in t.terms]
+    idx = _kronindex(size.(facs, 2), c)
+    shift = l == 0 ? Int32[] : _shift(pidx, -l)
+    cols = [l == 0 ? facs[m][:, idx[m]] : _gather(view(facs[m], :, idx[m]), shift)
+            for m in eachindex(facs)]
+    agg = [_isaggregate(v, pidx) for v in cols]
+    any(agg) || return Float64[], Float64[]
+    e = ones(nrows(pidx))
+    a = ones(nrows(pidx))
+    for m in eachindex(cols)
+        agg[m] ? (a .*= cols[m]) : (e .*= cols[m])
+    end
+    return _perperiod(a, pidx), e
+end
+
+# Whether two aggregate series are proportional (relative residual 1e-10, on at least two
+# periods where both are defined): then, in every period, both columns are their exposure
+# times the same number, and the identifying variation of one is its exposure net of the
+# other's (Frisch–Waugh–Lovell, period by period).
+function _sameagg(a::Vector{Float64}, b::Vector{Float64})
+    (isempty(a) || isempty(b)) && return false
+    aa = ab = bb = 0.0
+    n = 0
+    for k in eachindex(a, b)
+        (isfinite(a[k]) && isfinite(b[k])) || continue
+        aa += a[k]^2
+        ab += a[k] * b[k]
+        bb += b[k]^2
+        n += 1
+    end
+    (n >= 2 && aa > 0 && bb > 0) || return false
+    c = ab / aa
+    rr = 0.0
+    for k in eachindex(a, b)
+        (isfinite(a[k]) && isfinite(b[k])) && (rr += (b[k] - c * a[k])^2)
+    end
+    return rr <= 1e-20 * bb
+end
+
+# Whether two exposures are equal on the rows where both are defined (and there are some).
+function _sameexposure(a::Vector{Float64}, b::Vector{Float64})
+    n = 0
+    @inbounds for r in eachindex(a, b)
+        (isfinite(a[r]) && isfinite(b[r])) || continue
+        isapprox(a[r], b[r]; rtol = 1e-12) || return false
+        n += 1
+    end
+    return n > 0
+end
+
+"""
+    _owners(coefnames, shockcols, exposures) -> Vector{Int}
+
+For each coefficient, the column whose synthetic regression its t-LAHR refinement uses:
+
+- a shock, its own;
+- a lag of a shock (`Lℓ.shock`), and a regressor with the same exposure as a shock (e.g.
+  `s & L1.X` for the shock `s & X`), that shock's;
+- any other aggregate series times an exposure (e.g. a control `s2 & X`), its own;
+- any other coefficient (outcome lags, unit-level controls), the first shock's.
+
+0 where that column is not an aggregate series times an exposure.
+"""
+function _owners(coefnames::Vector{String}, shockcols::Vector{Int},
+        exposures::Vector{Vector{Float64}})
+    has(j) = !isempty(exposures[j])
+    owner = zeros(Int, length(coefnames))
+    for j in eachindex(coefnames)
+        if j in shockcols
+            owner[j] = has(j) ? j : 0
+            continue
+        end
+        m = match(r"^L\d+\.(.*)$", coefnames[j])
+        k = m === nothing ? nothing :
+            findfirst(s -> _wrap(coefnames[s]) == m.captures[1], shockcols)
+        if k === nothing && has(j)
+            k = findfirst(s -> has(s) && _sameexposure(exposures[j], exposures[s]),
+                shockcols)
+            k === nothing && (owner[j] = j; continue)
+        end
+        s = shockcols[something(k, 1)]
+        owner[j] = has(s) ? s : 0
+    end
+    return owner
 end
 
 function _nonunique(v::AbstractVector)

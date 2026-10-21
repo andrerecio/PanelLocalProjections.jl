@@ -7,7 +7,9 @@ Compustat-scale benchmark of `panellp` (Phase 1 exit criterion: ≤ 5 min, ≤ 2
 Synthetic firm panel: N = 15,500 firms over T = 124 quarters, 8 sectors, staggered entry
 and exit (each firm active for a contiguous window of at least 20 quarters), firm and
 sector × quarter fixed effects, and an exposure × aggregate shock. Horizons 0–20; one-way
-and two-way clustered and Driscoll–Kraay variances.
+and two-way clustered and Driscoll–Kraay variances; then the lag-augmented regression
+(`LagAugmented(ICLags())`) with t-LAHR inference (`TLAHR()`), and with the authors' lag
+rule (`CappedLags()`, up to 5 lags of the outcome and of the shock).
 """
 
 using PanelLocalProjections, StatsModels, StableRNGs, Printf
@@ -49,25 +51,57 @@ function firm_panel(; N = 15_500, T = 124, S = 8, seed = 4242)
     return (; firm, quarter, sector, y, x, lev, mp = mps)
 end
 
+# PLP_BENCH = "fe", "tlahr" or "capped" runs one part only (max RSS is a high-water mark
+# over the whole process); the default runs all three.
+const PART = get(ENV, "PLP_BENCH", "all")
+
 println("generating the panel…")
 data = firm_panel()
 println("rows: ", length(data.firm))
-f = @formula(leads(y) ~
-             lev & mp + lev + x + lags(y, 1) + fe(firm) + fe(sector) & fe(quarter))
 
-GC.gc()
-t_est = @elapsed r = panellp(f, data; id = :firm, time = :quarter, horizon = 20,
-    shock = "lev & mp")
-t_vcov = @elapsed begin
-    v1 = vcov(Clustered(:unit), r)
-    v2 = vcov(Clustered(:unit, :time), r)
-    v3 = vcov(DriscollKraaySE(), r)
+if PART in ("all", "fe")
+    f = @formula(leads(y) ~
+                 lev & mp + lev + x + lags(y, 1) + fe(firm) + fe(sector) & fe(quarter))
+    GC.gc()
+    t_est = @elapsed r = panellp(f, data; id = :firm, time = :quarter, horizon = 20,
+        shock = "lev & mp")
+    t_vcov = @elapsed begin
+        v1 = vcov(Clustered(:unit), r)
+        v2 = vcov(Clustered(:unit, :time), r)
+        v3 = vcov(DriscollKraaySE(), r)
+    end
+    s = summarize(r, v2)
+    @printf("estimation: %.1f s   variances (3 specs): %.2f s   max RSS: %.0f MB\n",
+        t_est, t_vcov, Sys.maxrss() / 2^20)
+    @printf("obs by horizon: %s\n", join(nobspath(r), ", "))
+    @printf("sweeps by horizon: %s\n", join((fit.iterations for fit in r.fits), ", "))
+    @printf("IRF (h = 0, 4, 8, 20): %s\n",
+        join((@sprintf("%.4f", s.coef[h + 1]) for h in (0, 4, 8, 20)), ", "))
+    @printf("stored result: %.1f MB\n", Base.summarysize(r) / 2^20)
 end
-s = summarize(r, v2)
-@printf("estimation: %.1f s   variances (3 specs): %.2f s   max RSS: %.0f MB\n",
-    t_est, t_vcov, Sys.maxrss() / 2^20)
-@printf("obs by horizon: %s\n", join(nobspath(r), ", "))
-@printf("sweeps by horizon: %s\n", join((fit.iterations for fit in r.fits), ", "))
-@printf("IRF (h = 0, 4, 8, 20): %s\n",
-    join((@sprintf("%.4f", s.coef[h + 1]) for h in (0, 4, 8, 20)), ", "))
-@printf("stored result: %.1f MB\n", Base.summarysize(r) / 2^20)
+
+# Phase 4: t-LAHR (Almuzara–Sancibrián): lags of y and of the shock chosen by the synthetic
+# AIC, HC2 + Imbens–Kolesár variance; the exposure is residualised within sector × quarter.
+fla = @formula(leads(y) ~ lev & mp + lev + x + fe(firm) + fe(sector) & fe(quarter))
+if PART in ("all", "tlahr")
+    GC.gc()
+    t_la = @elapsed rla = panellp(fla, data; id = :firm, time = :quarter, horizon = 20,
+        shock = "lev & mp", estimator = LagAugmented())
+    t_tl = @elapsed vt = vcov(TLAHR(), rla)
+    @printf("LagAugmented(ICLags()): %.1f s (p̂ = %d of 0–%d)   TLAHR(): %.2f s   max RSS: %.0f MB\n",
+        t_la, rla.lags.p, rla.lags.pmax, t_tl, Sys.maxrss() / 2^20)
+    @printf("t-LAHR IRF (h = 0, 4, 8, 20): %s\n",
+        join((@sprintf("%.4f", coefpath(rla)[h + 1]) for h in (0, 4, 8, 20)), ", "))
+    @printf("stored result: %.1f MB\n", Base.summarysize(rla) / 2^20)
+end
+
+# The authors' rule p(h) = min(h, p_max), p_max = ⌈(124 − 20)^{1/3}⌉ = 5: the most columns
+# per fit.
+if PART in ("all", "capped")
+    GC.gc()
+    t_cap = @elapsed rcap = panellp(fla, data; id = :firm, time = :quarter, horizon = 20,
+        shock = "lev & mp", estimator = LagAugmented(CappedLags()))
+    t_tc = @elapsed vcov(TLAHR(), rcap)
+    @printf("LagAugmented(CappedLags()): %.1f s (p(h) up to %d)   TLAHR(): %.2f s   max RSS: %.0f MB\n",
+        t_cap, rcap.lags.pmax, t_tc, Sys.maxrss() / 2^20)
+end

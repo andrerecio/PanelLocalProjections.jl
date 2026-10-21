@@ -24,6 +24,45 @@ horizons(r::PanelLocalProjection) = r.horizons
 esample(r::PanelLocalProjection, h::Integer) = _fit(r, h).esample
 
 """
+    synthetic(r, h; term = first shock, weights = :residual) -> NamedTuple
+
+The synthetic time series of coefficient `term` at horizon `h` (Almuzara & Sancibrián
+2026, Remark 1): per period of the sample, the weighted cross-sectional averages
+Σ_i w_i z_it / Σ_i w_i² of the within-transformed regressor `term` (`x`), response (`y`)
+and residuals (`resid`), and the weight ω_t = Σ_i w_i² (`weight`, 0 for a period without
+weight, whose averages are NaN). The weights are those of the synthetic regression that
+the [`TLAHR`](@ref) refinement of `term` uses: the exposure of `term` for a shock (or
+another aggregate series times an exposure), of its shock for a lag of a shock, of the
+first shock otherwise, residualised per period (`weights = :raw`: the raw exposure, for
+`x` only). `period` holds the period labels (integers, or `Date`s with a `frequency`). A
+Tables.jl column table.
+"""
+function synthetic(r::PanelLocalProjection, h::Integer; term = r.shocks[1],
+        weights::Symbol = :residual)
+    _check_option(weights, (:residual, :raw), "weights")
+    r.estimator isa SplitPanelJackknife && throw(ArgumentError(
+        "SplitPanelJackknife fits store no synthetic series (they serve the t-LAHR " *
+        "inference of fixed-effects regressions)"))
+    f = _fit(r, h)
+    j = _termindex(r.coefnames, term)
+    f.status === :ok ||
+        throw(ArgumentError("horizon $h was not estimated (status :$(f.status))"))
+    f.keep[j] || throw(ArgumentError(
+        "\"$(r.coefnames[j])\" is not in the regression of h = $h (omitted, or a lag " *
+        "beyond p(h))"))
+    k = findfirst(sy -> sy.col == r.owner[j], f.synthetic)
+    k === nothing && throw(ArgumentError(
+        "\"$(r.coefnames[j])\" has no synthetic series: neither it nor the first shock is " *
+        "an aggregate series times a unit-level exposure"))
+    sy = f.synthetic[k]
+    codes = findall(f.timepresent) .+ (r.panel.pmin - 1)
+    period = r.panel.frequency === :none ? codes :
+             [_period_date(c, r.panel.frequency) for c in codes]
+    x = weights === :raw ? sy.Xraw[:, j] : sy.X[:, j]
+    return (; period, x, y = sy.y, resid = sy.resid, weight = sy.weight)
+end
+
+"""
     coefpath(r; term = first shock) -> Vector{Float64}
 
 The coefficient of `term` across horizons (NaN where it was not estimated).
@@ -125,6 +164,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::PanelLocalProjection{E}) where
         io, "  panel: ", p.nunits, " units (", p.id, "), ", p.ntimes, " periods (", p.time,
         "), ", p.nrows, " rows")
     print(io, "  observations by horizon: ", join(nobspath(r), ", "))
+    if r.lags !== nothing
+        l = r.lags
+        print(io, "\n  lags by horizon: ", join(lagorder(r), ", "), " (", l.rule,
+            isempty(l.ic) ? "" : ": p̂ = $(l.p) of 0–$(l.pmax)", ")")
+    end
     for note in _fitnotes(r)
         print(io, "\n  note: ", note)
     end

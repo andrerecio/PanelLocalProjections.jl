@@ -169,6 +169,120 @@ struct CDOLS <: PanelLPEstimator
 end
 CDOLS(; validate::Bool = true) = CDOLS(validate)
 
+"Lag-length rule of [`LagAugmented`](@ref)."
+abstract type LagRule end
+
+"""
+    ICLags(; criterion = :aic, pmax = nothing, vars = :outcome, sample = :perp)
+
+Almuzara–Sancibrián (2026) rule p(h) = max{1, min(h, p̂)} (eq. 15; supplement B.7), with
+p̂ chosen by an information criterion on the *synthetic* time series (fn 11; supplement
+B.3–B.4). For each p = 0, …, `pmax`, the outcome is regressed at h = 0 on the formula's
+right-hand side and p of its own lags, with the formula's fixed effects; the residuals are
+averaged across units with the first shock's exposure weights, ξ̄_t(p), and
+
+    IC(p) = log σ̂²(p) + k(p) · g,   σ̂²(p) = Σ_t ω_t ξ̄_t(p)² / Σ_t ω_t,
+
+with ω_t the synthetic weight of period t (constant on balanced panels with a
+time-invariant exposure, where σ̂² is the mean of ξ̄_t²), k(p) the lags candidate p adds to
+the regression (none for a lag already among the regressors, or spanned by them), and
+g = 2/T (`:aic`) or log(T)/T (`:bic`), T the periods of the p = 0 sample. Ties go to the
+smaller p, except between candidates that are the same regression (their lags are already
+in the formula): p̂ is then the larger, so the formula's lags count towards it.
+
+- `pmax`: largest candidate; default max{1, ⌈(T − H)^{1/3}⌉}, T the distinct periods in the
+  data and H the largest horizon.
+- `vars = :outcome_and_shock` also adds p lags of each shock to candidate p (each counted
+  in k(p)).
+- `sample = :common` fits every candidate on the `pmax`-lag sample.
+"""
+struct ICLags <: LagRule
+    criterion::Symbol
+    pmax::Union{Nothing, Int}
+    vars::Symbol
+    sample::Symbol
+    function ICLags(criterion::Symbol, pmax::Union{Nothing, Int}, vars::Symbol, sample::Symbol)
+        pmax === nothing || pmax >= 1 ||
+            throw(ArgumentError("ICLags: pmax must be at least 1; got $pmax"))
+        return new(_check_option(criterion, (:aic, :bic), "criterion"), pmax,
+            _check_option(vars, (:outcome, :outcome_and_shock), "vars"),
+            _check_option(sample, (:perp, :common), "sample"))
+    end
+end
+
+"""
+    CappedLags(pmax = nothing)
+
+p(h) = min(h, pmax): no lag at h = 0. The rule of the Almuzara–Sancibrián code
+(`panel_LP.m`/`panel_LP.R`), whose default `pmax` is ⌈(T − H)^{1/3}⌉ (T the distinct
+periods in the data, H the largest horizon). A compatibility switch: the paper recommends
+[`ICLags`](@ref).
+"""
+struct CappedLags <: LagRule
+    pmax::Union{Nothing, Int}
+    function CappedLags(pmax::Union{Nothing, Integer} = nothing)
+        pmax === nothing || pmax >= 0 ||
+            throw(ArgumentError("CappedLags: pmax must be non-negative; got $pmax"))
+        return new(pmax === nothing ? nothing : Int(pmax))
+    end
+end
+
+"""
+    ConstantLags(p)
+
+The same number of lags p at every horizon ("plain" t-LAHR, p = 1, in Almuzara &
+Sancibrián's Table 1).
+"""
+struct ConstantLags <: LagRule
+    p::Int
+    function ConstantLags(p::Integer)
+        p >= 0 || throw(ArgumentError("ConstantLags: p must be non-negative; got $p"))
+        return new(Int(p))
+    end
+end
+
+"""
+    LagAugmented(rule = ICLags())
+
+Lag-augmented fixed-effects estimator of Almuzara & Sancibrián (2026): at horizon h, the
+regression adds p(h) lags of the outcome and of every shock column to the formula
+(`rule` sets p(h)), so that the scores are serially uncorrelated and inference clustered
+by period is valid ([`TLAHR`](@ref)). The lagged outcome is y for `leads(y)` and
+`anchor(y, z)`, Δy for `ldiff(y)` and `leads(firstdiff(y))`, and g for `cumul(g)`.
+Lags of a shock lag the whole column (s_{i,t−ℓ}X_{t−ℓ} for an exposure that varies over
+time). A lag already among the regressors, whatever its name (columns are compared
+numerically: `s & L1.X` is the lag of the shock `s & L0.X`), is not added again; one that
+the formula's columns span (Δy lags with `lags(y, 1:2)` in the formula) is left out of the
+regression. Requires unit fixed effects, `fe(id)`, or finer ones nested in the units (e.g.
+`fe(id) & fe(state)`).
+"""
+struct LagAugmented{R <: LagRule} <: PanelLPEstimator
+    rule::R
+end
+LagAugmented() = LagAugmented(ICLags())
+
+# LagAugmented resolved for one call: the number of lags p(h) at each horizon.
+struct _ResolvedLags <: PanelLPEstimator
+    lags::Vector{Int}
+    horizons::UnitRange{Int}
+end
+
+"""
+    LagSelection
+
+The lag rule of a [`LagAugmented`](@ref) fit: the rule, its largest lag, the selected
+order, and for [`ICLags`](@ref) the criterion, residual variance and number of synthetic
+periods for each candidate p = 0, …, `pmax`.
+"""
+struct LagSelection
+    rule::String
+    pmax::Int
+    p::Int
+    ic::Vector{Float64}
+    sigma2::Vector{Float64}
+    periods::Vector{Int}
+end
+
 # ---------------------------------------------------------------------------------------
 # Fixed-effect absorption (absorb.jl)
 # ---------------------------------------------------------------------------------------
@@ -236,6 +350,15 @@ struct PanelDesign{R <: PanelResponse}
     groupnames::Vector{Symbol}               # :unit, :time, FE dims, declared clusters
     ngroups::Vector{Int}                     # global number of groups per dimension
     subset::BitVector
+    # per column: the aggregate series it multiplies, per calendar period of the span (NaN
+    # where undefined), and its unit-level exposure, per data row; both empty when the
+    # column is not an aggregate series times an exposure (`_exposure`)
+    aggseries::Vector{Vector{Float64}}
+    exposures::Vector{Vector{Float64}}
+    # per column: the column whose synthetic regression its t-LAHR refinement uses (0: none)
+    owner::Vector{Int}
+    timefe::Vector{Int}                      # FE dimensions nested in periods
+    lagorder::Vector{Int}                    # per column: 0, or ℓ for an added lag ℓ
 end
 
 # ---------------------------------------------------------------------------------------
@@ -264,6 +387,22 @@ struct ScoreStats
     pairkind::Vector{Symbol}          # :obs (use Mobs), :first (= a), :second (= b), :own
 end
 
+# Synthetic time series of one coefficient that multiplies an aggregate series (a shock,
+# or another such regressor; Almuzara & Sancibrián 2026, Remark 1; supplement B.2): per
+# period present in the sample, weighted cross-sectional averages
+# Σ_{i∈t} w_i z_it / Σ_{i∈t} w_i² of the within-transformed regressors, response and
+# residuals. The weights are its exposure residualised per period (on an intercept when a
+# time-type fixed effect is absorbed, and on the exposures of the other regressors of the
+# same aggregate series); `Xraw` uses the raw exposure, as the authors' code.
+struct SyntheticSeries
+    col::Int                      # coefficient index
+    weight::Vector{Float64}       # Σ_{i∈t} w_i² (0: the period has no weight)
+    X::Matrix{Float64}            # periods × coefficients (NaN for omitted ones)
+    y::Vector{Float64}
+    resid::Vector{Float64}
+    Xraw::Matrix{Float64}
+end
+
 struct HorizonFit
     h::Int
     # :ok; :empty (no observations); :singular (a shock is absorbed by the fixed effects or
@@ -282,6 +421,11 @@ struct HorizonFit
     scores::ScoreStats
     iterations::Int           # absorption sweeps (0 without FE)
     converged::Bool
+    active::BitVector         # columns in this horizon's regression (LagAugmented: p(h) lags)
+    nlags::Int                # lags added by LagAugmented (0 otherwise)
+    # one per kept coefficient that owns a synthetic regression (`PanelDesign.owner`), rows
+    # = periods of `timepresent`
+    synthetic::Vector{SyntheticSeries}
 end
 
 struct PanelSummary
@@ -318,6 +462,9 @@ struct PanelLocalProjection{E <: PanelLPEstimator}
     panel::PanelSummary
     sample::Symbol
     singletons::Symbol
+    lags::Union{Nothing, LagSelection}   # LagAugmented only
+    owner::Vector{Int}                   # per coefficient: see PanelDesign
+    addedlag::Vector{Int}                # per coefficient: ℓ for a lag added by LagAugmented
 end
 
 # ---------------------------------------------------------------------------------------
@@ -415,12 +562,66 @@ struct DriscollKraaySE <: PanelVcov
     end
 end
 
+"""
+    TLAHR(; refine = true, weights = :residual)
+
+t-LAHR inference of Almuzara & Sancibrián (2026): the variance clustered by period, with
+no small-sample factor, of a lag-augmented regression ([`LagAugmented`](@ref)), whose
+scores are serially uncorrelated.
+
+- `refine = false`: CR0 by period (eq. 11), normal critical values. Equal to
+  `Clustered(:time; ssc = :none)`; with `WithinFE` and no lags, the paper's "t-HR".
+- `refine = true` (the paper's recommendation, supplement B.2): HC2 with the leverage of
+  the synthetic time-series regression, and Student-t critical values with the
+  Bell–McCaffrey/Imbens–Kolesár degrees of freedom ν of each coefficient. Needs every
+  shock to be an aggregate series times a unit-level exposure (`s & X`, or `X` alone).
+
+`weights` sets the synthetic regressions. `:residual` (the paper's) averages with the
+exposure residualised per period, on an intercept when a time-type fixed effect is
+absorbed (the paper's ŝ_i) and on the exposures of the other regressors of the same
+aggregate series, and weights each period by ω_t = Σ_i w_i² (fn 24: with every regressor
+an aggregate series times the exposure, the HC2 variance is then CR2 clustered by period).
+`:raw` averages with the raw exposure and leaves the periods unweighted, as the authors'
+code (`panel_LP.m`/`.R`). They agree on balanced panels with time effects and a
+time-invariant exposure. A shock and its lags use the shock's synthetic regression,
+another aggregate series times an exposure its own, every other coefficient the first
+shock's.
+"""
+struct TLAHR <: PanelVcov
+    refine::Bool
+    weights::Symbol
+    function TLAHR(refine::Bool, weights::Symbol)
+        new(refine,
+            _check_option(weights, (:residual, :raw), "weights"))
+    end
+end
+
+"""
+    CosineHAR(B = :llsw)
+
+Equal-weighted cosine (EWC) variance of the scores summed by period (Lazarus, Lewis, Stock
+& Watson 2018): Ω = B⁻¹ Σ_{j=1}^{B} Λ_j Λ_j', Λ_j = √2 Σ_t cos(πj(t − ½)/T) S_t, over the
+calendar periods from the first to the last of the sample (absent ones contribute zero);
+Student-t(B) critical values; no small-sample factor. `B = :llsw` is ⌊0.41 T^{2/3}⌋, as
+Stata's `harreg`; an integer fixes it. A comparator of [`TLAHR`](@ref) (the paper's "t-HAR").
+"""
+struct CosineHAR <: PanelVcov
+    rule::Symbol      # :llsw or :fixed
+    B::Int
+    function CosineHAR(rule::Symbol, B::Int)
+        _check_option(rule, (:llsw, :fixed), "B")
+        (rule === :llsw || B >= 1) ||
+            throw(ArgumentError("CosineHAR: B must be at least 1; got $B"))
+        return new(rule, B)
+    end
+end
+
 # Per-horizon details of a variance computation.
 struct VcovInfo
     factor::Float64       # small-sample factor applied
     groups::Int           # smallest number of clusters (0 if not clustered)
     periods::Int          # time periods entering a time aggregation (0 otherwise)
-    lags::Int             # Driscoll–Kraay lags (0 otherwise)
+    lags::Int             # Driscoll–Kraay lags; CosineHAR: cosine terms B; 0 otherwise
     psdfixed::Bool        # negative eigenvalues were clipped
 end
 

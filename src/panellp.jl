@@ -20,7 +20,7 @@ the left-hand side of `f` on its right-hand side, absorbing the `fe()` terms.
   `fe(time)` and clusters on `time` group by period, not by date.
 - `horizon`: `H` (horizons `0:H`) or a range of consecutive horizons such as `1:6`.
 - `estimator`: [`WithinFE`](@ref) (fixed effects; pooled OLS without them),
-  [`SplitPanelJackknife`](@ref) or [`CDOLS`](@ref).
+  [`SplitPanelJackknife`](@ref), [`CDOLS`](@ref) or [`LagAugmented`](@ref).
 - `shock`: coefficient name(s) of the shock; by default the columns of the first
   regressor. Required when the formula has interaction terms and other regressors.
 - `subset`: a Bool column or vector restricting the estimation sample *after* leads and
@@ -64,12 +64,14 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
         base .&= codes .!= 0
     end
     ys = [_lhs_at(d.response, ctx, h) for h in horizons]
-    masks = [base .& isfinite.(y) for y in ys]
+    # LagAugmented: p(h) and the lag columns (the other estimators pass through)
+    d, est, lags = _augment(estimator, d, ctx, base, horizons, singletons, absorb)
+    masks = [_lagmask!(base .& isfinite.(y), est, d, h) for (h, y) in zip(horizons, ys)]
     if sample === :common
         common = _common_sample(masks, horizons)
         masks = [copy(common) for _ in masks]
     end
-    fits = _estimate(estimator, d, horizons, ys, masks, singletons, absorb)
+    fits = _estimate(est, d, horizons, ys, masks, singletons, absorb)
     _check_identified(fits, d, time)
     p = d.pidx
     panel = PanelSummary(
@@ -77,7 +79,7 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
         nrows(p), p.pmin, p.pmax)
     r = PanelLocalProjection(estimator, absorb, f, d.responsename, d.coefnames,
         d.intercept, d.coefnames[d.shockcols], horizons, fits, d.groupnames, d.ngroups,
-        d.fenames, panel, sample, singletons)
+        d.fenames, panel, sample, singletons, lags, d.owner, d.lagorder)
     foreach(note -> @warn(note), _fitnotes(r))
     return r
 end
@@ -201,7 +203,8 @@ function _fitnotes(r::PanelLocalProjection)
         "a split-panel half is rank-deficient at h = $(_hlist(h)) " *
         "($(_halfcause(r.fits, r.coefnames))); coefficients are NaN")
     absorbed = (f, j) -> f.absorbed[j]
-    collinear = (f, j) -> !f.keep[j] && !f.absorbed[j]
+    # a lag LagAugmented added that the other regressors span is redundant, not omitted
+    collinear = (f, j) -> f.active[j] && !f.keep[j] && !f.absorbed[j] && r.addedlag[j] == 0
     for (label, pred) in (("absorbed by the fixed effects or the constant", absorbed),
         ("collinear with the other regressors", collinear))
         items = String[]

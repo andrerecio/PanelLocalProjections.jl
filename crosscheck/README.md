@@ -145,3 +145,30 @@ errors, observations (not for `xtlp` rows), critical degrees of freedom (not for
 | `xtreg F#.y−L.y s L.s, fe vce(cluster id)` (the paper's CMFE1) | `WithinFE()`, `fe(id)`, keep | `Clustered(:unit)` | b 3e-14, se 2e-14 |
 | `xtlp y s, fe m(spj) hor(0 9) vce(cluster id)` (the jackknife of the paper's applications; its Monte Carlo used `locproj m(xtspj)`) | `leads(y) ~ s + fe(id)`, `SplitPanelJackknife()` | `Clustered(:unit)` | b 1e-14, se 1e-14 |
 | R `feols(ld ~ s + l(s, 1))`, `cluster = ~id` (default `ssc`, and `ssc(K.adj = FALSE, G.adj = FALSE)`) / `"hetero"` | `CDOLS()` | `Clustered(:unit [; ssc = :none])` / `Robust()` | b 4e-14, se 1e-14 |
+
+### Phase 4: t-LAHR (Almuzara & Sancibrián)
+
+Committed tests in `test/test_crosscheck_p4.jl`, at horizons 0–6 on `fx_tlahr` (balanced,
+N = 200, T = 40) and `fx_tlahr_unbal` (10% of the rows removed).
+
+**The authors' `panel_LP.R`** (`crosscheck/R/p4_as_panelLP.R`; the code has no licence and
+is only run, from the local copy in `docs/references/code`). Specs: `s_twfe` (s_i X_t,
+`FE = cbind(id, t)`), `ones_unit` (s ≡ 1, `FE = cbind(id)`), `sv_twfe` (time-varying
+exposure), `s_twfe_w` (`W = sv`), `s2_twfe` (exposures `s` and `sv`); `p_max ∈ {0, 2}`;
+`cumulative` and `small_sample` on and off; 672 rows.
+
+| `panel_LP(...)` | `panellp` options | `vcov` spec | Agreement |
+|---|---|---|---|
+| `y, X, s, FE = cbind(id, t), p_max = p` | `leads(y) ~ s & X + fe(id) + fe(t)`, `LagAugmented(CappedLags(p))`, `singletons = :keep` | `TLAHR(refine = false)` | b 2e-12, se 1e-13 (balanced); 2e-9 (unbalanced: fixest's tolerance) |
+| `… small_sample = TRUE` | as above | `TLAHR(weights = :raw)` | se as above, df 3e-13 / 2e-9, except `s2_twfe`'s second df (their e₁ contrast) |
+| `… cumulative = TRUE` | `cumul(y) ~ …` | as above | as above |
+| `… small_sample = TRUE` (balanced panel: `s_twfe`, `s_twfe_w`, `ones_unit`, where ω_t is constant) | as above | `TLAHR()` (the paper's weights) | as above |
+
+**Stata** (`crosscheck/stata/p4_tlahr.do`).
+
+| Reference command (Stata `xtset id t`) | `panellp` options | `vcov` spec | Agreement |
+|---|---|---|---|
+| `reghdfe F#.y sX L(1/p).y L(1/p).sX, absorb(id t) vce(cluster t)`, p = min(h, 2), both panels | `leads(y) ~ s & X + fe(id) + fe(t)`, `LagAugmented(CappedLags(2))` | `Clustered(:time)` | b 2e-14 / 4e-12, se idem; N, df, G exact |
+| synthetic regression, s ≡ 1: `collapse` means of `F#.y`, X, `L.X`, `L2.X`, each demeaned over the sample periods; `regress …, noconstant vce(hc2, dfadjust)` (se, `e(adj_df)`) | `leads(y) ~ X + lags(X, 1:2) + fe(id)` | `TLAHR()` | b, se, df 2e-14 |
+| the same with ŝ_i = s_i − mean(s) weights | `leads(y) ~ s & X + lags(s & X, 1:2) + fe(id) + fe(t)` | `TLAHR()` | 3e-14 |
+| `harreg …, noconstant estimator(ewc)` on both synthetic regressions (se, `e(df_fb)`) | as above | `CosineHAR()` | 3e-14 |

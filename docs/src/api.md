@@ -8,6 +8,12 @@ PanelLocalProjection
 WithinFE
 SplitPanelJackknife
 CDOLS
+LagAugmented
+ICLags
+CappedLags
+ConstantLags
+LagSelection
+lagorder
 AlternatingProjections
 OneSweep
 ```
@@ -30,6 +36,8 @@ fe
 Robust
 Clustered
 DriscollKraaySE
+TLAHR
+CosineHAR
 vcov(::PanelLocalProjections.PanelVcov, ::PanelLocalProjection)
 PanelLPVcov
 stderror(::PanelLPVcov)
@@ -44,6 +52,7 @@ coefpath
 nobspath
 horizons
 esample
+synthetic
 irfplot
 irfplot!
 ```

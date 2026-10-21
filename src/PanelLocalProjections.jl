@@ -33,8 +33,9 @@ using Tables: Tables
 export panellp, PanelLocalProjection, PanelLPVcov, IRFSummary, @formula
 export leads, ldiff, anchor, cumul, lags, firstdiff, fe
 export WithinFE, SplitPanelJackknife, CDOLS, AlternatingProjections, OneSweep
-export Robust, Clustered, DriscollKraaySE
-export summarize, coefpath, nobspath, horizons, esample
+export LagAugmented, ICLags, CappedLags, ConstantLags, LagSelection
+export Robust, Clustered, DriscollKraaySE, TLAHR, CosineHAR
+export summarize, coefpath, nobspath, horizons, esample, lagorder, synthetic
 export coef, coefnames, vcov, stderror, nobs
 export irfplot, irfplot!
 
@@ -46,6 +47,7 @@ include("design.jl")
 include("absorb.jl")
 include("ols.jl")
 include("scores.jl")
+include("lagselect.jl")
 include("estimators.jl")
 include("panellp.jl")
 include("vcov.jl")
