@@ -5,7 +5,7 @@
 # cross-horizon covariances can be formed from the stored sums as well.
 
 # Score sums by group: S[g, :] = Σ_{r: codes[r] = g} U[r, :] over the kept columns.
-function _groupsums(U::Matrix{Float64}, codes::AbstractVector{Int32}, G::Int,
+function _groupsums(U::AbstractMatrix{Float64}, codes::AbstractVector{Int32}, G::Int,
         kidx::Vector{Int}, K::Int)
     S = zeros(G, K)
     @inbounds for (c, j) in enumerate(kidx)
@@ -57,7 +57,7 @@ end
 `U` holds the scores u_r = d_r ê_r on the kept columns (rows = estimation sample);
 `groups[g]` are the codes of score dimension g on the same rows.
 """
-function _score_stats(U::Matrix{Float64}, keep::BitVector,
+function _score_stats(U::AbstractMatrix{Float64}, keep::BitVector,
         groups::Vector{<:AbstractVector{Int32}}, ngroups::Vector{Int})
     K = length(keep)
     kidx = findall(keep)

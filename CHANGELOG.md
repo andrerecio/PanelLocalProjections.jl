@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased (0.1.0-DEV)
+## 0.1.0 (2026-10-21)
+
+### Phase 5: documentation, audit, release
+- Docs: the cross-check map (generated from `crosscheck/README.md`), a table of the
+  deviations from each reference implementation and the switches that reproduce it, audit
+  pages for `xtlp`, tidyMacro's `fLPPanel` and Ramey's infrastructure code, and the
+  firm-level applications (Ottonello–Winberry, Jeenas–Lagos) mapped to `panellp` calls.
+- Memory: each fit absorbs the design in place in one buffer, of which the within
+  transform, the kept columns and the scores are views; the raw columns are not kept (their
+  statistics are taken first), and the responses are built per horizon. On the scale
+  benchmark (1.1M rows, 21 horizons) the peak RSS falls from 1.6 to 1.3 GB (fixed effects),
+  from 2.6 to 1.8 GB (`LagAugmented(ICLags())`) and from 3.2 to 2.2 GB (`CappedLags()`,
+  up to 10 added lag columns). The estimates are unchanged.
+- Every cross-check re-run from an empty `crosscheck/ado`: the installed Stata packages
+  match the committed checksums, and every committed reference output is reproduced byte
+  for byte.
+- Version 0.1.0.
 
 ### Phase 4: t-LAHR inference (Almuzara & Sancibrián 2026)
 - `LagAugmented(rule)`: at each horizon, p(h) lags of the outcome (y, Δy for `ldiff`, g
@@ -79,7 +95,7 @@ Fixes from the adversarial review of Phase 4:
 - The scale benchmark (1.1M rows, 21 horizons) also runs `LagAugmented(ICLags())` with
   `TLAHR()`: 19 s and 0.7 s, 2.6 GB max RSS; and the authors' rule, `CappedLags()` (up to
   5 lags each of the outcome and of the shock): 25 s and 3.2 GB. The fixed-effects run:
-  13.5 s, 1.6 GB.
+  13.5 s, 1.6 GB. (Phase 5 lowers the memory.)
 
 ### Phase 3: cumulative-difference OLS (Ugarte-Ruiz 2026)
 - `CDOLS(; validate = true)`: pooled OLS of the long difference y_{t+h} − y_{t−1} on the

@@ -6,16 +6,18 @@ procedures of the recent panel-LP literature in one place:
 
 | Method | Reference | Status |
 |---|---|---|
-| Fixed-effects (within/LSDV) panel LP, with unit-, time- and two-way-clustered, heteroskedasticity-robust and Driscoll–Kraay standard errors | Jordà (2005); Driscoll & Kraay (1998); Cameron, Gelbach & Miller (2011) | in development (v0.1) |
-| Split-panel jackknife (SPJ) correction of the Nickell bias of the FE estimator | Mei, Sheng & Shi (2026, *JIE*) | in development (v0.1) |
-| Cumulative-difference OLS (CD-OLS), which avoids the within transformation | Ugarte-Ruiz (2026, BBVA Research) | in development (v0.1) |
-| t-LAHR inference for aggregate (macro) shocks: time-clustered, lag-augmented, heteroskedasticity-robust, with an HC2 + Imbens–Kolesár refinement | Almuzara & Sancibrián (2026) | in development (v0.1) |
+| Fixed-effects (within/LSDV) panel LP, with unit-, time- and two-way-clustered, heteroskedasticity-robust and Driscoll–Kraay standard errors | Jordà (2005); Driscoll & Kraay (1998); Cameron, Gelbach & Miller (2011) | v0.1 |
+| Split-panel jackknife (SPJ) correction of the Nickell bias of the FE estimator | Mei, Sheng & Shi (2026, *JIE*) | v0.1 |
+| Cumulative-difference OLS (CD-OLS), which avoids the within transformation | Ugarte-Ruiz (2026, BBVA Research) | v0.1 |
+| t-LAHR inference for aggregate (macro) shocks: time-clustered, lag-augmented, heteroskedasticity-robust, with an HC2 + Imbens–Kolesár refinement | Almuzara & Sancibrián (2026) | v0.1 |
 | Panel LP-IV | Almuzara & Sancibrián (2026, §3); Cloyne et al. (2023) | planned (v0.2) |
 
-The package is under active development; the phased roadmap and the exit criteria of each
-phase are in [`TODO.md`](TODO.md).
+Version 0.1.0. What comes after it (panel LP-IV, joint bands across horizons, the
+firm-level replications) is listed in [`TODO.md`](TODO.md). The documentation covers the
+methods, the conventions of each reference implementation and how `panellp` reproduces
+them, the cross-checks, and audits of the reference code.
 
-## Planned interface (v0.1)
+## Usage
 
 ```julia
 using PanelLocalProjections

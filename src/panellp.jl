@@ -63,15 +63,16 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
     for codes in Iterators.flatten((d.fe, d.groups))
         base .&= codes .!= 0
     end
-    ys = [_lhs_at(d.response, ctx, h) for h in horizons]
     # LagAugmented: p(h) and the lag columns (the other estimators pass through)
     d, est, lags = _augment(estimator, d, ctx, base, horizons, singletons, absorb)
-    masks = [_lagmask!(base .& isfinite.(y), est, d, h) for (h, y) in zip(horizons, ys)]
+    # the responses are built again when each horizon is fitted, not kept for all
+    masks = [_lagmask!(base .& isfinite.(_lhs_at(d.response, ctx, h)), est, d, h)
+             for h in horizons]
     if sample === :common
         common = _common_sample(masks, horizons)
         masks = [copy(common) for _ in masks]
     end
-    fits = _estimate(est, d, horizons, ys, masks, singletons, absorb)
+    fits = _estimate(est, d, ctx, horizons, masks, singletons, absorb)
     _check_identified(fits, d, time)
     p = d.pidx
     panel = PanelSummary(
@@ -116,14 +117,15 @@ function _common_sample(masks::Vector{BitVector}, horizons::UnitRange{Int})
 end
 
 # Function barrier: concrete types from here on.
-function _estimate(est::PanelLPEstimator, d::PanelDesign, horizons::UnitRange{Int},
-        ys::Vector{Vector{Float64}}, masks::Vector{BitVector}, singletons::Symbol,
+function _estimate(est::PanelLPEstimator, d::PanelDesign, ctx::_EvalContext,
+        horizons::UnitRange{Int}, masks::Vector{BitVector}, singletons::Symbol,
         absorb::AbsorptionMethod)
     fits = Vector{HorizonFit}(undef, length(horizons))
     for (k, h) in enumerate(horizons)
         mask = copy(masks[k])
         dropped = singletons === :drop ? _drop_singletons!(mask, d.fe) : 0
-        fits[k] = _fit_horizon(est, d, h, ys[k], mask, dropped, absorb)
+        fits[k] = _fit_horizon(est, d, h, _lhs_at(d.response, ctx, h), mask, dropped,
+            absorb)
     end
     return fits
 end

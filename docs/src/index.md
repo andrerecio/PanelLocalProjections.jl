@@ -14,8 +14,8 @@ Panel local projections (Jordà 2005): for each horizon ``h``, a panel regressio
   refinement (Almuzara & Sancibrián, 2026).
 
 !!! note "Status"
-    Version 0.1 is under development. The roadmap, with the exit criteria of each phase,
-    is in `TODO.md` at the repository root.
+    Version 0.1.0. Panel LP-IV is planned for version 0.2; the roadmap is in `TODO.md` at
+    the repository root.
 
 Fixed-effect absorption, the OLS solver and all variance estimators are implemented in the
 package. Their design takes inspiration from

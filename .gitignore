@@ -9,6 +9,7 @@ Manifest*.toml
 LocalPreferences.toml
 JuliaLocalPreferences.toml
 docs/build/
+docs/src/crosscheck.md
 docs/site/
 *.jl.cov
 *.jl.*.cov

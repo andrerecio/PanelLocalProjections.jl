@@ -78,10 +78,12 @@ The full design and the rationale for every convention are in the approved plan.
 - [ ] Later (research): exact CR2 by period on the panel regression, an alternative to the synthetic regression when unit-level controls or lags of time-varying exposures make it conservative (`methods/tlahr.md`)
 
 ## Phase 5: Documentation, audit, release
-- [ ] Guide, methods and cross-check pages; audit pages (xtlp, Ramey, tidyMacro); `deviations.md`
-- [ ] `replication/firm_level_wip.md` (OW20 and the JL24 reduced form; CFFS23 and the JL24 IV blocked on LP-IV)
-- [ ] Memory: fewer transient copies of the design per fit (`_within_fit`: Xraw, A, Xt, Xk, the scores and `_eqr`'s copy), to bring `LagAugmented(ICLags())` (2.6 GB) and `CappedLags()` (3.2 GB) at scale under 2 GB
-- [ ] Full cross-check re-run from an empty `crosscheck/ado`; strict docs build; version 0.1.0
+- [x] Guide, methods and cross-check pages (`crosscheck.md` generated from `crosscheck/README.md`); audit pages (xtlp, Ramey, tidyMacro); `deviations.md`
+- [x] `replication/firm_level_wip.md` (OW20 and the JL24 reduced form; CFFS23 and the JL24 IV blocked on LP-IV)
+- [x] Memory: the design absorbed in place in one buffer (within transform, kept columns and scores are views; no raw copy), responses built per horizon. Max RSS at scale: fixed effects 1.3 GB, `LagAugmented(ICLags())` 1.8 GB (was 2.6), `CappedLags()` 2.2 GB (was 3.2; live data with up to 10 added lag columns, not uncollected garbage)
+- [x] Full cross-check re-run from an empty `crosscheck/ado` (manifest matches; every committed output byte-identical); strict docs build; version 0.1.0
+- [x] Phase 5 gate: `Pkg.test()` on 1.12 and 1.10 (35709 tests), format, fixtures, strict docs build, cross-checks from an empty ado tree
+- [x] Commit
 
 ## After v0.1
 - Panel LP-IV, with t-LAHR for IV (A&S supp. §B) and ivreghdfe/xtivreg2 cross-checks

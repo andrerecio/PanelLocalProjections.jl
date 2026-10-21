@@ -10,44 +10,63 @@ const _ABSORBED_TOL = 1e-8   # ‖x̃‖² ≤ tol · ‖x − x̄‖² (squared
 const _RANK_TOL = 1e-9       # |R_jj| ≤ tol · |R_11| on unit-norm columns: collinear
 
 # Pivoted QR of the columns `kidx` of `X`, each scaled to unit norm; returns the norms too.
-function _eqr(X::Matrix{Float64}, kidx::Vector{Int})
+function _eqr(X::AbstractMatrix{Float64}, kidx::Vector{Int})
     Xk = X[:, kidx]
     norms = [LinearAlgebra.norm(view(Xk, :, j)) for j in axes(Xk, 2)]
     Xk ./= norms'
     return LinearAlgebra.qr!(Xk, LinearAlgebra.ColumnNorm()), norms
 end
 
+# Per column of the raw (pre-absorption) regressors: the centred and the raw sums of
+# squares, what the absorbed-column screen and the PSD metric need, so that the raw
+# columns need not be kept once absorbed.
+function _colstats(X::AbstractMatrix{Float64})
+    css = zeros(size(X, 2))
+    ss = zeros(size(X, 2))
+    for j in axes(X, 2)
+        x = view(X, :, j)
+        μ = Statistics.mean(x)
+        css[j] = sum(v -> abs2(v - μ), x)
+        ss[j] = sum(abs2, x)
+    end
+    return (; n = size(X, 1), css, ss)
+end
+
 # Columns absorbed by the fixed effects (or the constant), judged against the
-# pre-absorption centred norm, before any rescaling.
-function _absorbed_cols(Xt::AbstractMatrix{Float64}, Xraw::AbstractMatrix{Float64},
+# pre-absorption centred norm, before any rescaling. `raw`: the raw columns, or their
+# `_colstats`.
+function _absorbed_cols(Xt::AbstractMatrix{Float64}, raw::AbstractMatrix{Float64},
         hasfe::Bool, intercept::Bool)
+    return _absorbed_cols(Xt, _colstats(raw), hasfe, intercept)
+end
+function _absorbed_cols(Xt::AbstractMatrix{Float64}, raw::NamedTuple, hasfe::Bool,
+        intercept::Bool)
     absorbed = falses(size(Xt, 2))
     for j in axes(Xt, 2)
-        x = view(Xraw, :, j)
-        μ = Statistics.mean(x)
-        css = sum(v -> abs2(v - μ), x)
+        css = raw.css[j]
         if hasfe
             # any fixed effect spans the constant
             absorbed[j] = css == 0 || sum(abs2, view(Xt, :, j)) <= _ABSORBED_TOL * css
         elseif !(intercept && j == 1)
-            absorbed[j] = sum(abs2, x) == 0 || (intercept && css == 0)
+            absorbed[j] = raw.ss[j] == 0 || (intercept && css == 0)
         end
     end
     return absorbed
 end
 
 """
-    _ols(Xt, yt, Xraw, hasfe, intercept, shockcols, added = Int[]) -> NamedTuple
+    _ols(Xt, yt, raw, hasfe, intercept, shockcols, added = Int[]) -> NamedTuple
 
-OLS of `yt` on `Xt` (within-transformed when `hasfe`). Returns the coefficients and bread
+OLS of `yt` on `Xt` (within-transformed when `hasfe`; `raw`: the raw columns or their
+`_colstats`). Returns the coefficients and bread
 `(X̃'X̃)⁻¹` on the kept columns, the kept-column mask, the columns omitted as absorbed by
 the fixed effects or the constant, the residuals, and `status`: `:ok`, or `:singular`
 when a shock column is absorbed or collinear (the other fields are then empty). Among
 collinear columns, those in `added` (lags added by `LagAugmented`) are omitted first.
 """
-function _ols(Xt::Matrix{Float64}, yt::Vector{Float64}, Xraw::AbstractMatrix{Float64},
-        hasfe::Bool, intercept::Bool, shockcols::Vector{Int}, added::Vector{Int} = Int[])
-    absorbed = _absorbed_cols(Xt, Xraw, hasfe, intercept)
+function _ols(Xt::AbstractMatrix{Float64}, yt::Vector{Float64}, raw, hasfe::Bool,
+        intercept::Bool, shockcols::Vector{Int}, added::Vector{Int} = Int[])
+    absorbed = _absorbed_cols(Xt, raw, hasfe, intercept)
     keep = .!absorbed
     singular = (; β = Float64[], B = zeros(0, 0), keep, absorbed, resid = Float64[],
         status = :singular)
@@ -84,7 +103,7 @@ end
 # Collinear columns among the kept ones, omitting those in `added` rather than the others:
 # the pivoted QR of the other columns first; then that of the `added` columns (unit norm)
 # residualised on them, at the same tolerance.
-function _dropcollinear!(keep::BitVector, Xt::Matrix{Float64}, added::Vector{Int})
+function _dropcollinear!(keep::BitVector, Xt::AbstractMatrix{Float64}, added::Vector{Int})
     isadded = falses(length(keep))
     isadded[added] .= true
     fidx = findall(keep .& .!isadded)

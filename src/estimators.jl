@@ -25,27 +25,38 @@ end
 Within transformation and OLS on the rows of `mask` and the columns `cols` (ascending, the
 shocks among them). `keep`, `absorbed` and `xsd` are over all columns of the design;
 `Xk` holds the within-transformed kept columns, `β` and `B` their coefficients and bread.
+The design is absorbed in place in one buffer, of which `Xk` is a view: the raw columns
+are not kept (their statistics are taken before the absorption).
 """
 function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
         absorb::AbsorptionMethod, cols::Vector{Int} = collect(axes(d.X, 2)))
     rows = findall(mask)
-    Xraw = d.X[rows, cols]
-    A = hcat(y[rows], Xraw)
+    A = Matrix{Float64}(undef, length(rows), 1 + length(cols))
+    A[:, 1] = view(y, rows)
+    for (c, j) in enumerate(cols)
+        A[:, c + 1] = view(d.X, rows, j)
+    end
+    raw = _colstats(view(A, :, 2:size(A, 2)))
     fs = _fe_sample(d.fe, rows)
     it, conv = _absorb_matrix!(A, fs, absorb)
     yt = A[:, 1]
-    Xt = A[:, 2:end]
     shocks = Int[something(findfirst(==(j), cols)) for j in d.shockcols]
     # lags added by LagAugmented give way to the formula's columns when collinear
     added = Int[k for (k, j) in enumerate(cols) if d.lagorder[j] > 0]
-    o = _ols(Xt, yt, Xraw, !isempty(d.fe), d.intercept, shocks, added)
+    o = _ols(view(A, :, 2:size(A, 2)), yt, raw, !isempty(d.fe), d.intercept, shocks, added)
     K = length(d.coefnames)
     keep, absorbed, xsd = falses(K), falses(K), fill(NaN, K)
     keep[cols] = o.keep
     absorbed[cols] = o.absorbed
-    xsd[cols] = _xsd(Xraw, d.intercept)
-    return (; o.β, o.B, keep, absorbed, o.resid, o.status, rows, Xk = Xt[:, o.keep], yt,
-        fs, xsd, iterations = it, converged = conv)
+    xsd[cols] = _xsd(raw, d.intercept)
+    # the kept columns, moved to the front of the buffer (a contiguous view)
+    kc = findall(o.keep)
+    for (c, k) in enumerate(kc)
+        c == k || (A[:, c + 1] = view(A, :, k + 1))
+    end
+    return (; o.β, o.B, keep, absorbed, o.resid, o.status, rows,
+        Xk = view(A, :, 2:(1 + length(kc))), yt, fs, xsd, iterations = it,
+        converged = conv)
 end
 
 function _singular_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int, w;
@@ -72,10 +83,9 @@ end
 # Standard deviations (n − 1) of the raw regressors, floored at 1e-3: the metric in which
 # reghdfe and xtlp clip negative eigenvalues of a multi-way variance. The intercept enters
 # with scale 1, as `_cons` in reghdfe (reghdfe.mata, `stdev_x = stdev_x, 1`).
-function _xsd(Xraw::Matrix{Float64}, intercept::Bool)
-    n = size(Xraw, 1)
-    sd = [n > 1 ? max(Statistics.std(view(Xraw, :, j)), 1e-3) : 1e-3
-          for j in axes(Xraw, 2)]
+function _xsd(raw::NamedTuple, intercept::Bool)
+    n = raw.n
+    sd = [n > 1 ? max(sqrt(css / (n - 1)), 1e-3) : 1e-3 for css in raw.css]
     intercept && (sd[1] = 1.0)
     return sd
 end
@@ -108,15 +118,17 @@ function _fit_within(d::PanelDesign, h::Int, y::Vector{Float64}, mask::BitVector
     w = _within_fit(d, y, mask, absorb, cols)
     w.status === :singular &&
         return _singular_fit(d, h, mask, singletons, w; active, nlags)
-    U = w.Xk .* w.resid
     groups = [view(g, w.rows) for g in d.groups]
+    timepresent = _present(groups[2], d.ngroups[2])
+    synthetic = _synthetic(d, w, groups[2], timepresent)
+    # the scores, in the buffer of the within-transformed design (no longer needed)
+    U = w.Xk
+    U .*= w.resid
     stats, present = _score_stats(U, w.keep, groups, d.ngroups)
     dof = _dofinfo(d, w.rows, w.fs, count(w.keep), present, singletons)
     coef, bread = _expand(w.β, w.B, w.keep)
-    timepresent = _present(groups[2], d.ngroups[2])
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask, timepresent,
-        dof, stats, w.iterations, w.converged, active, nlags,
-        _synthetic(d, w, groups[2], timepresent))
+        dof, stats, w.iterations, w.converged, active, nlags, synthetic)
 end
 
 """
