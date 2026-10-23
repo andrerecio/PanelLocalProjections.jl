@@ -86,6 +86,12 @@ The full design and the rationale for every convention are in the approved plan.
 - [x] Commit
 
 ## After v0.1
+- [ ] Adversarial review of the Phase 4 review fixes and of the Phase 5 memory changes (deferred; started twice, stopped for time). Scope:
+  - econometrics: the ω_t-weighted synthetic regression (CR2 by period), the ω-weighted criterion with its k(p) penalty and its rule for repeated regressions, residualising on every same-aggregate regressor (`_sameagg`), and the ownership rules (`_owners`);
+  - code: `_shockweights`/`_projresid!` and the zero-weight rule, `_dropcollinear!`, the `_samecol` lag dedup, and the in-place `_within_fit` buffer (aliasing, the split-panel jackknife path);
+  - tests and docs: mutation tests of the fixes, and every number changed in `methods/tlahr.md` and `audit/as_code.md`.
+
+  Re-run the first review's reproductions and fuzzers on the current code. Fix the confirmed findings in a follow-up commit.
 - Panel LP-IV, with t-LAHR for IV (A&S supp. §B) and ivreghdfe/xtivreg2 cross-checks
 - Joint (sup-t) bands across horizons, built on the stored group score sums
 - Negative horizons (pre-trends), lagged-FE interactions, a `panelshift` helper
