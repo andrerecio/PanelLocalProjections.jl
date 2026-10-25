@@ -53,7 +53,9 @@ end
     @test_throws ArgumentError build(@formula(leads(y) ~ x + s & X))                # shock required
     @test build(@formula(leads(y) ~ x + s & X); shock = "s & X").shockcols == [3]
     @test_throws ArgumentError build(@formula(leads(y) ~ x); shock = "nope")
-    @test_throws ArgumentError build(@formula(leads(y) ~ x + (w ~ X)))              # IV (v0.2)
+    d = build(@formula(leads(y) ~ x + (w ~ X)))                                     # IV block
+    @test d.coefnames == ["(Intercept)", "w", "x"] && d.endo == [2] && d.instnames == ["X"]
+    @test_throws ArgumentError build(@formula(leads(y) ~ x + log(w ~ X)))           # nested block
     @test_throws ArgumentError build(@formula(leads(y) ~ leads(x)))                 # RHS response
     @test_throws ArgumentError build(@formula(leads(y) ~ x + lags(x, 0:-1)))
     # same-named helper from an unknown module

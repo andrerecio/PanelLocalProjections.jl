@@ -93,7 +93,7 @@ function _with_lags(d::PanelDesign, ctx::_EvalContext, pmax::Int)
         hcat(d.X, reduce(hcat, cols)), coefnames, d.shockcols, d.intercept, d.rhsok, d.fe,
         d.fenames, d.groups, d.groupnames, d.ngroups, d.subset, vcat(d.aggseries, lagagg),
         exposures, _owners(coefnames, d.shockcols, exposures), d.timefe,
-        vcat(d.lagorder, order))
+        vcat(d.lagorder, order), d.endo, d.Z, d.instnames)
 end
 
 # `mask` restricted to the rows where the lags of horizon h are defined.

@@ -172,3 +172,26 @@ exposure), `s_twfe_w` (`W = sv`), `s2_twfe` (exposures `s` and `sv`); `p_max ∈
 | synthetic regression, s ≡ 1: `collapse` means of `F#.y`, X, `L.X`, `L2.X`, each demeaned over the sample periods; `regress …, noconstant vce(hc2, dfadjust)` (se, `e(adj_df)`) | `leads(y) ~ X + lags(X, 1:2) + fe(id)` | `TLAHR()` | b, se, df 2e-14 |
 | the same with ŝ_i = s_i − mean(s) weights | `leads(y) ~ s & X + lags(s & X, 1:2) + fe(id) + fe(t)` | `TLAHR()` | 3e-14 |
 | `harreg …, noconstant estimator(ewc)` on both synthetic regressions (se, `e(df_fb)`) | as above | `CosineHAR()` | 3e-14 |
+
+### Phase 6a: panel LP-IV (two-stage least squares)
+
+Committed tests in `test/test_crosscheck_p6.jl`, at horizons 0–4 on `fx_lpiv` (balanced,
+N = 60, T = 50) and `fx_lpiv_unbal` (staggered entry, period 25 absent, 8% of the rows
+removed). The model: `leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id) + fe(t)`
+(Stata `Fy w Ly (sffr = smp)`), and with several endogenous regressors
+`(g1 & ffr + g2 & ffr + g3 & ffr ~ g1 & mp + g2 & mp + g3 & mp) + w + fe(id)`.
+
+| Reference command (Stata `xtset id t`) | `panellp` options | `vcov` spec | Agreement |
+|---|---|---|---|
+| `ivreghdfe …, absorb(id t) robust [small]` (`small` changes nothing: ivreghdfe always applies its correction) | `fe(id) + fe(t)`, drop | `Robust()` | b 4e-15, se 1e-11 |
+| `ivreghdfe …, absorb(id t) cluster(id \| t) [small]`: a fixed effect is nested in the cluster | as above | `Clustered(:unit \| :time; ssc = :none)` × (N−1)/(N − K − df′)·G/(G−1), df′ = df_a minus the levels of the nested effect (two fewer than reghdfe's count, `ssc = :stata`) | se 2e-10 |
+| `ivreghdfe …, absorb(id) cluster(t)`: none nested | `fe(id)` | `Clustered(:time)` | se 3e-15 |
+| `ivreghdfe …, absorb(id t) cluster(id t) [small]` | `fe(id) + fe(t)` | `Clustered(:unit, :time; psd = false)` | se 6e-12 |
+| `ivreghdfe …, absorb(id t) dkraay(3) [small]` (`dkraay(b)`: bandwidth b, b − 1 lags) | `fe(id) + fe(t)` | `DriscollKraaySE(2)` | se 8e-12 |
+| `ivreghdfe Fy w (g1ffr g2ffr g3ffr = g1mp g2mp g3mp), absorb(id) cluster(t)` | `fe(id)` | `Clustered(:time)` | b 4e-15, se 3e-15 |
+| `xtivreg2 …, fe cluster(id)` (xtivreg2 clusters only on groups nested in the panels) | `fe(id)` | `Clustered(:unit; ssc = :none)` | se 3e-15 |
+| `xtivreg2 …, fe robust small` | `fe(id)` | `Robust()` | se 4e-15 |
+| R `feols(Fy ~ w + Ly \| id + t \| sffr ~ smp, fixef.rm = "none")`, `ssc(K.adj = FALSE, G.adj = FALSE)`: hetero, cluster id / t, `~id + t` with `vcov_fix = FALSE`, `DK(2) ~ t` | keep | `Robust(; ssc = :none)`, `Clustered(…; ssc = :none)`, `Clustered(:unit, :time; ssc = :none, psd = false)`, `DriscollKraaySE(2; ssc = :none, timelags = :position)` (fixest lags over the periods present) | 1e-11 balanced, 5e-9 unbalanced (fixest's demeaning tolerance) |
+
+The Kleibergen–Paap F of each ivreghdfe fit (`e(widstat)`) is recorded in the `F` column of
+`p6_lpiv.csv`, for the first-stage diagnostics of Phase 6c.

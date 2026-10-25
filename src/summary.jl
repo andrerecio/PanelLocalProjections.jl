@@ -43,6 +43,9 @@ function synthetic(r::PanelLocalProjection, h::Integer; term = r.shocks[1],
     r.estimator isa SplitPanelJackknife && throw(ArgumentError(
         "SplitPanelJackknife fits store no synthetic series (they serve the t-LAHR " *
         "inference of fixed-effects regressions)"))
+    isempty(r.endogenous) || throw(ArgumentError(
+        "panel LP-IV fits store no synthetic series (TLAHR(refine = true), which uses " *
+        "them, is not defined for IV)"))
     f = _fit(r, h)
     j = _termindex(r.coefnames, term)
     f.status === :ok ||
@@ -159,6 +162,8 @@ function Base.show(io::IO, ::MIME"text/plain", r::PanelLocalProjection{E}) where
     println(io, "  response: ", r.response)
     println(io, "  shock:    ", join(r.shocks, ", "))
     println(io, "  regressors: ", join(r.coefnames, ", "))
+    isempty(r.endogenous) || println(io, "  instrumented: ", join(r.endogenous, ", "),
+        " (2SLS); excluded instruments: ", join(r.instruments, ", "))
     isempty(r.fenames) || println(io, "  fixed effects: ", join(r.fenames, ", "))
     println(
         io, "  panel: ", p.nunits, " units (", p.id, "), ", p.ntimes, " periods (", p.time,

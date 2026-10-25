@@ -18,6 +18,8 @@ seeds); `julia --project=dev dev/make_fixtures.jl --check` regenerates them and 
 | `fx_cdols.csv` | Ugarte-Ruiz DGP, ρ_y = ρ_s = 0.8, β = 1, correlated effects (α = 10), N = 100, T = 50 | 20261023 |
 | `fx_tlahr.csv` | Almuzara–Sancibrián stylized design (+ unit effect), ρ = 0.7, R̄² = 0.9, N = 200, T = 40 | 20261024 |
 | `fx_tlahr_unbal.csv` | `fx_tlahr` with ~10% of the rows removed | 20261024 (+11) |
+| `fx_lpiv.csv` | Panel LP-IV after Almuzara–Sancibrián eq. (14): endogenous aggregate `ffr`, proxy `mp` (a₀ = 1, noise 0.5), exposure `s`, control `w`, groups `grp` (3) with dummies `g1`–`g3`, N = 60, T = 50 | 20261025 |
+| `fx_lpiv_unbal.csv` | `fx_lpiv` with staggered entry, period 25 absent, ~8% of the rows removed | 20261025 (+12) |
 
 ## `stata/`, `r/`: reference outputs on the synthetic panels
 
@@ -33,6 +35,8 @@ Added from Phase 1 on. Columns: tool | version/SHA | licence | input | generatin
 | `r/p3_fixest.csv` | R 4.5.3, fixest 0.14.0 | CRAN | fixest GPL-3 (output only) | the three `xtarsim_*` panels, `fx_cdols`, `fx_unbalanced` (with `x` as the shock) | `crosscheck/R/p3_fixest.R` |
 | `stata/p4_tlahr.csv` | Stata 19.5 BE: reghdfe 6.14.1, `regress, vce(hc2, dfadjust)`, harreg | reghdfe `29b2b20`; harreg SSC 20260516 (see `crosscheck/VERSIONS.md`) | reghdfe MIT; harreg SSC (output only) | `fx_tlahr`, `fx_tlahr_unbal`, and synthetic time series collapsed from `fx_tlahr` in the do-file | `crosscheck/stata/p4_tlahr.do` |
 | `r/p4_as_panelLP.csv` | R 4.5.3: Almuzara–Sancibrián `panel_LP.R` (fixest 0.14.0, pracma 2.4.6) | TinchoAlmuzara/PanelLocalProjections `4fd72b9` | **no licence**: the code is run locally from `docs/references/code` and never committed; only its outputs on our panels are | `fx_tlahr`, `fx_tlahr_unbal` | `crosscheck/R/p4_as_panelLP.R` |
+| `stata/p6_lpiv.csv` | Stata 19.5 BE: ivreghdfe 1.1.4, ivreg2 4.1.12, ranktest 2.0.04, xtivreg2 1.0.17 | ivreghdfe `bfb5577` (see `crosscheck/VERSIONS.md`) | ivreghdfe MIT; ivreg2, ranktest, xtivreg2 SSC (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/stata/p6_lpiv.do` |
+| `r/p6_fixest.csv` | R 4.5.3, fixest 0.14.0 | CRAN | fixest GPL-3 (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/R/p6_fixest.R` |
 | `r/p1p2_mss_lppanel.csv` | R 4.5.3, Mei–Sheng–Shi `LP_panel` (`LP_panel_all.r`) | metricshilab/panel-lp-replication `882b046` | MIT | `fx_balanced`, `fx_unbalanced`, `fx_balanced` units 1–4 | `crosscheck/R/p1p2_mss_lppanel.R` |
 
 ## `local/` (gitignored)

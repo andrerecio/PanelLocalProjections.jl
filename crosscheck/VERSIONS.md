@@ -22,6 +22,11 @@ installed by `crosscheck/stata/setup_stata.do`.
 | xtspj | (no header; compiled `lxtspj.mlib`) | SSC | 20190518 |
 | xtarsim | 1.0.0 (31may05) | SSC | 20050620 |
 | harreg | (no header) | SSC | 20260516 |
+| ivreghdfe | 1.1.4 (29nov2025) | GitHub sergiocorreia/ivreghdfe | `bfb5577a6dbdfb029ab4ab6a7e93f7257a827b42` (added 2026-10-25, Phase 6) |
+| ivreg2 | 4.1.12 (14aug2024) | SSC | 20240814 (Phase 6) |
+| ranktest | 2.0.04 (21sept2020) | SSC | 20200929 (Phase 6) |
+| xtivreg2 | 1.0.17 (19Feb2015) | SSC | 20200626 (Phase 6) |
+| weakivtest | (no header) | SSC | 20260722 (Phase 6) |
 
 SSC packages cannot be pinned. A failed `ado_manifest.py --check` means an upstream
 change: rerun the cross-checks, review the diff of the committed outputs, then

@@ -359,6 +359,11 @@ struct PanelDesign{R <: PanelResponse}
     owner::Vector{Int}
     timefe::Vector{Int}                      # FE dimensions nested in periods
     lagorder::Vector{Int}                    # per column: 0, or ℓ for an added lag ℓ
+    # panel LP-IV: the endogenous columns of X (ascending; empty without an IV block) and
+    # the excluded instruments over all data rows (NaN where undefined; no columns without)
+    endo::Vector{Int}
+    Z::Matrix{Float64}
+    instnames::Vector{String}
 end
 
 # ---------------------------------------------------------------------------------------
@@ -407,7 +412,8 @@ struct HorizonFit
     h::Int
     # :ok; :empty (no observations); :singular (a shock is absorbed by the fixed effects or
     # collinear in this horizon's sample); :spj_half_singular (a split-panel half is
-    # rank-deficient). Coefficients are NaN unless :ok.
+    # rank-deficient); :underidentified (panel LP-IV: fewer excluded instruments than
+    # endogenous regressors left in this horizon's sample). Coefficients are NaN unless :ok.
     status::Symbol
     coef::Vector{Float64}     # NaN for omitted coefficients
     keep::BitVector           # coefficient estimated (not omitted)
@@ -426,6 +432,10 @@ struct HorizonFit
     # one per kept coefficient that owns a synthetic regression (`PanelDesign.owner`), rows
     # = periods of `timepresent`
     synthetic::Vector{SyntheticSeries}
+    # panel LP-IV: the excluded instruments in the first stage (not absorbed by the fixed
+    # effects, nor collinear with the exogenous regressors or the other instruments); empty
+    # without an IV block
+    instkeep::BitVector
 end
 
 struct PanelSummary
@@ -465,6 +475,8 @@ struct PanelLocalProjection{E <: PanelLPEstimator}
     lags::Union{Nothing, LagSelection}   # LagAugmented only
     owner::Vector{Int}                   # per coefficient: see PanelDesign
     addedlag::Vector{Int}                # per coefficient: ℓ for a lag added by LagAugmented
+    endogenous::Vector{String}           # panel LP-IV: instrumented coefficients (else empty)
+    instruments::Vector{String}          # panel LP-IV: excluded instruments (else empty)
 end
 
 # ---------------------------------------------------------------------------------------

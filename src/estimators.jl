@@ -6,7 +6,7 @@ function _empty_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int;
         status::Symbol = :empty, nobs::Int = 0, keep::BitVector = falses(length(d.coefnames)),
         absorbed::BitVector = falses(length(d.coefnames)), iterations::Int = 0,
         converged::Bool = true, active::BitVector = trues(length(d.coefnames)),
-        nlags::Int = 0)
+        nlags::Int = 0, instkeep::BitVector = falses(size(d.Z, 2)))
     K = length(d.coefnames)
     G = length(d.groups)
     D = length(d.fe)
@@ -16,7 +16,7 @@ function _empty_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int;
         Tuple{Int, Int}[], Matrix{Float64}[], Symbol[])
     return HorizonFit(h, status, fill(NaN, K), keep, absorbed, fill(NaN, K, K),
         fill(NaN, K), mask, falses(d.ngroups[2]), dof, stats, iterations, converged,
-        active, nlags, SyntheticSeries[])
+        active, nlags, SyntheticSeries[], instkeep)
 end
 
 """
@@ -27,24 +27,71 @@ shocks among them). `keep`, `absorbed` and `xsd` are over all columns of the des
 `Xk` holds the within-transformed kept columns, `β` and `B` their coefficients and bread.
 The design is absorbed in place in one buffer, of which `Xk` is a view: the raw columns
 are not kept (their statistics are taken before the absorption).
+
+With an IV block (`d.endo`), the excluded instruments are absorbed in the same buffer and
+the fit is two-stage least squares: the first stage projects the endogenous columns on the
+exogenous ones and the instruments (`_firststage_basis`), whose fitted values X̂ replace
+them in `Xk`; `B` is (X̂'X̂)⁻¹ and `resid` the structural residual ỹ − X̃β (with the
+endogenous columns themselves), so that the scores are X̂ ⊙ resid. `instkeep` marks the
+instruments in the first stage; `status` is `:underidentified` when fewer of them than
+endogenous columns are left.
 """
 function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
         absorb::AbsorptionMethod, cols::Vector{Int} = collect(axes(d.X, 2)))
     rows = findall(mask)
-    A = Matrix{Float64}(undef, length(rows), 1 + length(cols))
+    nc, L = length(cols), size(d.Z, 2)
+    A = Matrix{Float64}(undef, length(rows), 1 + nc + L)
     A[:, 1] = view(y, rows)
     for (c, j) in enumerate(cols)
         A[:, c + 1] = view(d.X, rows, j)
     end
-    raw = _colstats(view(A, :, 2:size(A, 2)))
+    for l in 1:L
+        A[:, 1 + nc + l] = view(d.Z, rows, l)
+    end
+    rawall = _colstats(view(A, :, 2:size(A, 2)))
+    raw = (; rawall.n, css = rawall.css[1:nc], ss = rawall.ss[1:nc])
     fs = _fe_sample(d.fe, rows)
     it, conv = _absorb_matrix!(A, fs, absorb)
     yt = A[:, 1]
+    hasfe = !isempty(d.fe)
     shocks = Int[something(findfirst(==(j), cols)) for j in d.shockcols]
     # lags added by LagAugmented give way to the formula's columns when collinear
     added = Int[k for (k, j) in enumerate(cols) if d.lagorder[j] > 0]
-    o = _ols(view(A, :, 2:size(A, 2)), yt, raw, !isempty(d.fe), d.intercept, shocks, added)
+    Xt = view(A, :, 2:(1 + nc))
+    absall = _absorbed_cols(view(A, :, 2:size(A, 2)), rawall, hasfe, d.intercept)
+    xabs = absall[1:nc]
     K = length(d.coefnames)
+    instkeep = .!absall[(nc + 1):end]
+    # 2SLS: the fitted values of the (kept) endogenous columns replace them in the buffer
+    en = Int[k for (k, j) in enumerate(cols) if j in d.endo && !xabs[k]]
+    Xen = zeros(length(rows), 0)
+    if L > 0 && !isempty(en)
+        ex = Int[k for k in 1:nc if !xabs[k] && !(k in en)]
+        zi = findall(instkeep)
+        Q, zk, rE = _firststage_basis(view(A, :, 2:size(A, 2)), ex, nc .+ zi)
+        instkeep[zi] = zk
+        Xen = A[:, 1 .+ en]
+        if count(zk) < length(en) || !_identified(Q, rE, Xen)
+            keep = falses(K)
+            absorbed = falses(K)
+            absorbed[cols] = xabs
+            return (; β = Float64[], B = zeros(0, 0), keep, absorbed, resid = Float64[],
+                status = :underidentified, rows, Xk = view(A, :, 2:1), yt, fs,
+                xsd = fill(NaN, K), iterations = it, converged = conv, instkeep)
+        end
+        A[:, 1 .+ en] = Q * (Q' * Xen)
+    end
+    o = _ols(Xt, yt, raw, hasfe, d.intercept, shocks, added; absorbed = xabs)
+    resid = o.resid
+    if o.status === :ok && !isempty(en)
+        # ỹ − X̃β = (ỹ − X̂β) − (X̃ − X̂)β, the difference only in the endogenous columns
+        kidx = findall(o.keep)
+        for (c, k) in enumerate(en)
+            o.keep[k] || continue
+            b = o.β[findfirst(==(k), kidx)]
+            resid .-= b .* (view(Xen, :, c) .- view(A, :, 1 + k))
+        end
+    end
     keep, absorbed, xsd = falses(K), falses(K), fill(NaN, K)
     keep[cols] = o.keep
     absorbed[cols] = o.absorbed
@@ -54,9 +101,83 @@ function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
     for (c, k) in enumerate(kc)
         c == k || (A[:, c + 1] = view(A, :, k + 1))
     end
-    return (; o.β, o.B, keep, absorbed, o.resid, o.status, rows,
+    return (; o.β, o.B, keep, absorbed, resid, o.status, rows,
         Xk = view(A, :, 2:(1 + length(kc))), yt, fs, xsd, iterations = it,
-        converged = conv)
+        converged = conv, instkeep)
+end
+
+"""
+    _firststage_basis(M, ex, zi) -> (Q, zkeep, rE)
+
+First stage of 2SLS on the within-transformed columns of `M`: an orthonormal basis `Q` of
+the span of the exogenous columns `ex` and the instruments `zi`, and which instruments
+enter it. Frisch–Waugh–Lovell, as `_dropcollinear!`: the pivoted QR of the exogenous
+columns (unit norm, rank at the tolerance of `_ols`); then each instrument in turn (unit
+norm), residualised on the basis so far (twice, for orthogonality to round-off), enters
+when the residual norm exceeds the same tolerance. An instrument collinear with the
+exogenous columns or with earlier instruments is left out (as ivreg2 drops the later of
+collinear instruments). The first `rE` columns of `Q` span the exogenous columns.
+"""
+function _firststage_basis(M::AbstractMatrix{Float64}, ex::Vector{Int}, zi::Vector{Int})
+    n = size(M, 1)
+    QE = zeros(n, 0)
+    if !isempty(ex)
+        F = LinearAlgebra.qr!(_unitcols!(M[:, ex]), LinearAlgebra.ColumnNorm())
+        dg = abs.(LinearAlgebra.diag(F.R))
+        r = count(>(_RANK_TOL * dg[1]), dg)
+        QE = F.Q * Matrix{Float64}(LinearAlgebra.I, n, r)
+    end
+    R = _unitcols!(M[:, zi])
+    zkeep = falses(length(zi))
+    QZ = Vector{Float64}[]
+    for c in eachindex(zi)
+        v = R[:, c]
+        for _ in 1:2
+            v .-= QE * (QE' * v)
+            for q in QZ
+                v .-= LinearAlgebra.dot(q, v) .* q
+            end
+        end
+        nv = LinearAlgebra.norm(v)
+        nv > _RANK_TOL || continue
+        zkeep[c] = true
+        push!(QZ, v ./ nv)
+    end
+    return isempty(QZ) ? QE : hcat(QE, reduce(hcat, QZ)), zkeep, size(QE, 2)
+end
+
+"""
+    _identified(Q, rE, X) -> Bool
+
+Whether the instruments identify the endogenous columns `X` (within-transformed): the
+parts of the columns off the exogenous span (the first `rE` columns of the first-stage
+basis `Q`) that the instruments (its other columns) predict have full column rank. A
+column whose part predicted by the instruments is round-off, a partial R² of the first
+stage at most `_ABSORBED_TOL` (the absorbed-column screen's tolerance), is not
+identified; nor are columns whose predicted parts are collinear. Its fitted value would
+otherwise be round-off rescaled into an arbitrary coefficient. Columns spanned by the
+exogenous regressors are left to the collinearity screen of `_ols`.
+"""
+function _identified(Q::Matrix{Float64}, rE::Int, X::Matrix{Float64})
+    QE = view(Q, :, 1:rE)
+    QZ = view(Q, :, (rE + 1):size(Q, 2))
+    R = X .- QE * (QE' * X)
+    cols = [c
+            for c in axes(X, 2)
+            if sum(abs2, view(R, :, c)) > _ABSORBED_TOL * sum(abs2, view(X, :, c))]
+    isempty(cols) && return true
+    size(QZ, 2) >= length(cols) || return false
+    G = QZ' * _unitcols!(R[:, cols])
+    return minimum(LinearAlgebra.svdvals(G)) > sqrt(_ABSORBED_TOL)
+end
+
+# The columns of C scaled to unit norm (zero columns left as they are).
+function _unitcols!(C::Matrix{Float64})
+    for c in axes(C, 2)
+        nc = LinearAlgebra.norm(view(C, :, c))
+        nc > 0 && (C[:, c] ./= nc)
+    end
+    return C
 end
 
 function _singular_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int, w;
@@ -64,7 +185,7 @@ function _singular_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int,
         nlags::Int = 0)
     return _empty_fit(d, h, mask, singletons; status, nobs = length(w.rows),
         keep = w.keep, absorbed = w.absorbed, iterations = w.iterations,
-        converged = w.converged, active, nlags)
+        converged = w.converged, active, nlags, instkeep = w.instkeep)
 end
 
 function _dofinfo(d::PanelDesign, rows::Vector{Int}, fs::_FESample, k::Int,
@@ -116,11 +237,13 @@ function _fit_within(d::PanelDesign, h::Int, y::Vector{Float64}, mask::BitVector
     active[cols] .= true
     any(mask) || return _empty_fit(d, h, mask, singletons; active, nlags)
     w = _within_fit(d, y, mask, absorb, cols)
-    w.status === :singular &&
-        return _singular_fit(d, h, mask, singletons, w; active, nlags)
+    w.status === :ok ||
+        return _singular_fit(d, h, mask, singletons, w; status = w.status, active, nlags)
     groups = [view(g, w.rows) for g in d.groups]
     timepresent = _present(groups[2], d.ngroups[2])
-    synthetic = _synthetic(d, w, groups[2], timepresent)
+    # IV fits have no synthetic regression (TLAHR(refine = true) is not defined for them)
+    synthetic = isempty(d.endo) ? _synthetic(d, w, groups[2], timepresent) :
+                SyntheticSeries[]
     # the scores, in the buffer of the within-transformed design (no longer needed)
     U = w.Xk
     U .*= w.resid
@@ -128,7 +251,7 @@ function _fit_within(d::PanelDesign, h::Int, y::Vector{Float64}, mask::BitVector
     dof = _dofinfo(d, w.rows, w.fs, count(w.keep), present, singletons)
     coef, bread = _expand(w.β, w.B, w.keep)
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask, timepresent,
-        dof, stats, w.iterations, w.converged, active, nlags, synthetic)
+        dof, stats, w.iterations, w.converged, active, nlags, synthetic, w.instkeep)
 end
 
 """
@@ -340,7 +463,7 @@ function _fit_horizon(est::SplitPanelJackknife, d::PanelDesign, h::Int,
     coef, bread = _expand(βspj, w.B, w.keep)
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask,
         _present(groups[2], d.ngroups[2]), dof, stats, iterations, converged,
-        trues(length(w.keep)), 0, SyntheticSeries[])
+        trues(length(w.keep)), 0, SyntheticSeries[], falses(0))
 end
 
 # ---------------------------------------------------------------------------------------
@@ -348,6 +471,23 @@ end
 # ---------------------------------------------------------------------------------------
 
 _validate(::PanelLPEstimator, d::PanelDesign, f) = nothing
+
+# Panel LP-IV (Almuzara & Sancibrián 2026, §3.4) is two-stage least squares on the
+# fixed-effects design; the other estimators have no IV version (yet).
+_check_iv(::WithinFE) = nothing
+function _check_iv(est::PanelLPEstimator)
+    why = est isa SplitPanelJackknife ?
+          "the split-panel jackknife (Mei, Sheng & Shi 2026) is defined for OLS, and its " *
+          "bias correction and variance are not established for 2SLS" :
+          est isa CDOLS ?
+          "cumulative-difference OLS (Ugarte-Ruiz 2026) has no IV version" :
+          est isa LagAugmented ?
+          "lag augmentation of panel LP-IV (lags of the endogenous regressors instrumented " *
+          "by lags of the instruments) is not implemented yet" :
+          "$(nameof(typeof(est))) has no IV version"
+    throw(ArgumentError(
+        "an instrumental-variable block (endo ~ inst) needs estimator = WithinFE(): $why"))
+end
 
 # Every use of the variables `ys` in term `t`, as (smallest lag, differenced).
 _uses!(out, t::VarTerm, ys, lag, diff) = (t.sym in ys && push!(out, (lag, diff)); out)

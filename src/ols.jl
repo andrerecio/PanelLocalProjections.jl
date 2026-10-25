@@ -55,18 +55,20 @@ function _absorbed_cols(Xt::AbstractMatrix{Float64}, raw::NamedTuple, hasfe::Boo
 end
 
 """
-    _ols(Xt, yt, raw, hasfe, intercept, shockcols, added = Int[]) -> NamedTuple
+    _ols(Xt, yt, raw, hasfe, intercept, shockcols, added = Int[]; absorbed) -> NamedTuple
 
 OLS of `yt` on `Xt` (within-transformed when `hasfe`; `raw`: the raw columns or their
-`_colstats`). Returns the coefficients and bread
+`_colstats`). `absorbed` (by default `_absorbed_cols(Xt, raw, …)`) is passed when `Xt` is
+not the absorbed data itself (the second stage of 2SLS, on fitted values). Returns the
+coefficients and bread
 `(X̃'X̃)⁻¹` on the kept columns, the kept-column mask, the columns omitted as absorbed by
 the fixed effects or the constant, the residuals, and `status`: `:ok`, or `:singular`
 when a shock column is absorbed or collinear (the other fields are then empty). Among
 collinear columns, those in `added` (lags added by `LagAugmented`) are omitted first.
 """
 function _ols(Xt::AbstractMatrix{Float64}, yt::Vector{Float64}, raw, hasfe::Bool,
-        intercept::Bool, shockcols::Vector{Int}, added::Vector{Int} = Int[])
-    absorbed = _absorbed_cols(Xt, raw, hasfe, intercept)
+        intercept::Bool, shockcols::Vector{Int}, added::Vector{Int} = Int[];
+        absorbed::BitVector = _absorbed_cols(Xt, raw, hasfe, intercept))
     keep = .!absorbed
     singular = (; β = Float64[], B = zeros(0, 0), keep, absorbed, resid = Float64[],
         status = :singular)

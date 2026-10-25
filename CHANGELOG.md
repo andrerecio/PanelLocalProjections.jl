@@ -1,5 +1,45 @@
 # Changelog
 
+## Unreleased (v0.2: panel LP-IV)
+
+### Phase 6a: IV core
+- Panel LP-IV (Almuzara & Sancibrián 2026, §3.4): a block `(endo ~ inst)` in the formula,
+  e.g. `leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)`, makes each horizon's fit
+  two-stage least squares on its fixed-effects design. The instruments are absorbed with
+  the rest of the design, in the same buffer. The first stage is a Frisch–Waugh–Lovell
+  projection on the exogenous regressors and the instruments, and the fitted values
+  replace the endogenous columns. The fit stores the bread (X̂'X̂)⁻¹ and the scores X̂ ξ̂,
+  where ξ̂ is the structural residual, so every variance applies unchanged:
+  `Robust`, `Clustered`, `DriscollKraaySE`, `CosineHAR`, and `TLAHR(refine = false)`, which is
+  the paper's LP-IV variance (supplement A.4). `TLAHR(refine = true)` on IV fits is an error
+  for now.
+- Several endogenous regressors are allowed (e.g. group dummies × an endogenous aggregate).
+  The endogenous regressors are listed first and are the default `shock`.
+- Instruments absorbed by the fixed effects, or collinear with the exogenous regressors or
+  with earlier instruments, are left out of the first stage, with a note. A horizon with
+  fewer instruments than endogenous regressors left, or whose instruments do not predict
+  every endogenous regressor (a first-stage partial R² of round-off size, or collinear
+  fitted values), is `:underidentified`. A model underidentified at every horizon is an
+  error. IV fits store no synthetic series, so `synthetic()` on them is an error.
+- Specification errors:
+  - `fe()` or a constant inside the block;
+  - two blocks;
+  - an exogenous regressor listed as an instrument;
+  - fewer instruments than endogenous regressors;
+  - a nested block;
+  - IV with `SplitPanelJackknife`, `CDOLS`, or `LagAugmented` (planned for 6b).
+- Fixtures `fx_lpiv` and `fx_lpiv_unbal` (the paper's eq. 14 design).
+- Cross-checks:
+  - Stata: `ivreghdfe` (robust, one- and two-way clusters, `dkraay`), `xtivreg2, fe`, and
+    several endogenous regressors;
+  - R: fixest `feols` with an IV part.
+
+  Coefficients agree to 5e-15 and standard errors to 2e-10 (unbalanced fixest: 5e-9).
+  When a fixed effect is nested in the cluster, ivreghdfe's clustered small-sample factor
+  counts two fewer absorbed degrees of freedom than reghdfe's (documented in
+  `crosscheck/README.md`). New pinned Stata packages: ivreghdfe, ivreg2, ranktest,
+  xtivreg2, weakivtest.
+
 ## 0.1.0 (2026-10-21)
 
 ### Phase 5: documentation, audit, release

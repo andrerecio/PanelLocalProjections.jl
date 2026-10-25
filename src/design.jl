@@ -92,13 +92,16 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
     end
 
     response = _rewrite_lhs(f.lhs)
-    regs, fes, ireq = _rewrite_rhs(f.rhs)
+    regs, fes, ireq, iv = _rewrite_rhs(f.rhs)
+    endoterms, instterms = iv === nothing ? (Any[], Any[]) : iv
     _width1(response.term, "the response")
     response isa AnchorResponse && _width1(response.base, "the anchor of anchor(y, z)")
 
     vars = Set{Symbol}()
     _vars!(vars, response)
     foreach(t -> _vars!(vars, t), regs)
+    foreach(t -> _vars!(vars, t), endoterms)
+    foreach(t -> _vars!(vars, t), instterms)
     columns = Dict{Symbol, Vector{Float64}}()
     for v in vars
         c = column(v)
@@ -120,7 +123,9 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
         push!(coefnames, "(Intercept)")
         push!(termof, (0, 1))
     end
-    for (k, t) in enumerate(regs)
+    # the endogenous regressors first, as ivreghdfe lists them
+    allregs = vcat(endoterms, regs)
+    for (k, t) in enumerate(allregs)
         push!(blocks, _cols(t, ctx))
         append!(coefnames, _names(t))
         append!(termof, ((k, c) for c in 1:size(blocks[end], 2)))
@@ -129,11 +134,15 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
     X = reduce(hcat, blocks)
     allunique(coefnames) ||
         throw(ArgumentError("duplicated regressors: $(coefnames[findall(_nonunique(coefnames))])"))
-    shockcols = _select_shocks(shock, coefnames, regs)
+    nendo = sum(t -> length(_names(t)), endoterms; init = 0)
+    endo = collect((1:nendo) .+ intercept)
+    Z, instnames = _instruments(instterms, ctx, coefnames, endo)
+    shockcols = shock === nothing && !isempty(endo) ? copy(endo) :
+                _select_shocks(shock, coefnames, regs)
     any(j -> coefnames[j] == "(Intercept)", shockcols) &&
         throw(ArgumentError("the intercept cannot be the shock"))
 
-    rhsok = BitVector([_rowfinite(X, r) for r in 1:n])
+    rhsok = BitVector([_rowfinite(X, r) && _rowfinite(Z, r) for r in 1:n])
 
     # Codes of a fixed-effect or cluster variable: the panel's own unit and period codes
     # for the id and time columns (so that dates group by period, as in leads and lags),
@@ -187,7 +196,7 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
 
     none = (Float64[], Float64[])
     exps = [termof[j][1] == 0 ? none :
-            _exposure(regs[termof[j][1]], termof[j][2], view(X, :, j), ctx)
+            _exposure(allregs[termof[j][1]], termof[j][2], view(X, :, j), ctx)
             for j in axes(X, 2)]
     aggseries, exposures = first.(exps), last.(exps)
     timefe = [k for (k, c) in enumerate(fecodes) if _timenested(c, periodcodes)]
@@ -195,7 +204,33 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
     return PanelDesign(pidx, response, _respname(response), columns, X, coefnames,
         shockcols, intercept, rhsok, fecodes, fenames, groups, groupnames, ngroups,
         _subsetmask(subset, cols, n), aggseries, exposures,
-        _owners(coefnames, shockcols, exposures), timefe, zeros(Int, length(coefnames)))
+        _owners(coefnames, shockcols, exposures), timefe, zeros(Int, length(coefnames)),
+        endo, Z, instnames)
+end
+
+# The excluded instruments of an IV block, evaluated on the panel (n × 0 without one), and
+# their names. Exogenous regressors instrument themselves: naming one among the excluded
+# instruments is an error. An instrument may be an endogenous regressor (that column is
+# then exogenous after all: `(x ~ x)` is OLS).
+function _instruments(instterms::Vector{Any}, ctx::_EvalContext,
+        coefnames::Vector{String}, endo::Vector{Int})
+    isempty(instterms) && return zeros(_n(ctx), 0), String[]
+    Z = reduce(hcat, [_cols(t, ctx) for t in instterms])
+    names = reduce(vcat, [_names(t) for t in instterms])
+    allunique(names) ||
+        throw(ArgumentError("duplicated instruments: $(names[findall(_nonunique(names))])"))
+    for nm in names
+        j = findfirst(==(nm), coefnames)
+        (j === nothing || j in endo) && continue
+        throw(ArgumentError(
+            "the instrument $(repr(nm)) is an exogenous regressor; exogenous regressors " *
+            "instrument themselves: list only the excluded instruments in (endo ~ inst)"))
+    end
+    length(names) >= length(endo) || throw(ArgumentError(
+        "the IV block has $(length(endo)) endogenous regressor(s) " *
+        "($(join(repr.(coefnames[endo]), ", "))) but $(length(names)) excluded " *
+        "instrument(s): the model is underidentified"))
+    return Z, names
 end
 
 # Whether a fixed-effect dimension is nested in the periods (time, or group × time).

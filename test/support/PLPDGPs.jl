@@ -293,6 +293,90 @@ function fx_tlahr_unbal()
 end
 
 """
+`fx_lpiv`: a panel LP-IV design after Almuzara–Sancibrián (2026, §3.4, eq. 14), N = 60,
+T = 50:
+
+    X_t   ~ N(0, 1)                                structural shock (not observed)
+    Z_t   ~ N(0, 1)                                other aggregate shock
+    ffr_t = 0.5 ffr_{t-1} + X_t + 0.6 Z_t          endogenous aggregate (b₀ = 1)
+    mp_t  = X_t + 0.5 ν_t,  ν_t ~ N(0, 1)          proxy (a₀ = 1, measurement error ν)
+    w_it  = 0.5 w_{i,t-1} + ew_it                  exogenous control
+    y_it  = μ_i + 0.6 y_{i,t-1} + β_i X_t + γ_i Z_t + 0.3 w_it + u_it
+
+with s_i = β_i = 1 + N(0, 1), γ_i = 0.5 + 0.5 N(0, 1), μ_i ~ N(0, 1), u_it ~ N(0, 1);
+`sv = s + 0.3 ζ_it` is a time-varying exposure; `grp = mod(id-1, 3) + 1` with dummies `g1`,
+`g2`, `g3` (several endogenous regressors: g_k & ffr instrumented by g_k & mp). `X` is the
+structural shock, kept for reference.
+"""
+function fx_lpiv(; seed = 20261025, N = 60, T = 50)
+    rng = StableRNG(seed)
+    TT = BURNIN + T
+    X = zeros(TT)
+    Z = zeros(TT)
+    ffr = zeros(TT)
+    mp = zeros(TT)
+    for t in 1:TT
+        X[t] = randn(rng)
+        Z[t] = randn(rng)
+        ffr[t] = (t == 1 ? 0.0 : 0.5 * ffr[t - 1]) + X[t] + 0.6 * Z[t]
+        mp[t] = X[t] + 0.5 * randn(rng)
+    end
+    cols = Dict(k => Float64[] for k in ("y", "X", "ffr", "mp", "s", "sv", "w"))
+    ids = Int[]
+    ts = Int[]
+    grp = Int[]
+    for i in 1:N
+        si = 1.0 + randn(rng)
+        γ = 0.5 + 0.5 * randn(rng)
+        μ = randn(rng)
+        g = mod(i - 1, 3) + 1
+        yp = μ / 0.4
+        wp = 0.0
+        for k in 1:TT
+            wk = 0.5 * wp + randn(rng)
+            ζ = randn(rng)
+            yk = μ + 0.6 * yp + si * X[k] + γ * Z[k] + 0.3 * wk + randn(rng)
+            if k > BURNIN
+                push!(ids, i)
+                push!(ts, k - BURNIN)
+                push!(grp, g)
+                push!(cols["y"], yk)
+                push!(cols["X"], X[k])
+                push!(cols["ffr"], ffr[k])
+                push!(cols["mp"], mp[k])
+                push!(cols["s"], si)
+                push!(cols["sv"], si + 0.3 * ζ)
+                push!(cols["w"], wk)
+            end
+            yp, wp = yk, wk
+        end
+    end
+    dummy(k) = [Int(g == k) for g in grp]
+    return Pair{String, Vector}[
+        "id" => ids, "t" => ts, "y" => cols["y"], "X" => cols["X"], "ffr" => cols["ffr"],
+        "mp" => cols["mp"], "s" => cols["s"], "sv" => cols["sv"], "w" => cols["w"],
+        "grp" => grp, "g1" => dummy(1), "g2" => dummy(2), "g3" => dummy(3)]
+end
+
+"""
+`fx_lpiv_unbal`: `fx_lpiv` with staggered entry (unit i enters at t ∈ 1..10), period 25
+absent for every unit, and about 8% of the remaining rows removed at random.
+"""
+function fx_lpiv_unbal()
+    cols = fx_lpiv()
+    rng = StableRNG(12)
+    entry = [1 + floor(Int, 10 * rand(rng)) for _ in 1:60]
+    id = _col(cols, "id")
+    t = _col(cols, "t")
+    keep = trues(length(id))
+    for r in eachindex(id)
+        u = rand(rng)   # one draw per row keeps the stream aligned
+        keep[r] = t[r] >= entry[id[r]] && t[r] != 25 && u >= 0.08
+    end
+    return _select(cols, keep)
+end
+
+"""
     mss_toy(rng; N = 30, T = 60, ρ = 0.8, β = -0.6, δ = 0.2, η = 0.2)
 
 One draw of the Mei–Sheng–Shi (2026) main-text Monte Carlo design (their `simul_LP.R`,
@@ -334,7 +418,7 @@ end
 "Name → generator for every committed synthetic fixture."
 const FIXTURES = (fx_balanced = fx_balanced, fx_unbalanced = fx_unbalanced,
     fx_dated = fx_dated, fx_cdols = fx_cdols, fx_tlahr = fx_tlahr,
-    fx_tlahr_unbal = fx_tlahr_unbal)
+    fx_tlahr_unbal = fx_tlahr_unbal, fx_lpiv = fx_lpiv, fx_lpiv_unbal = fx_lpiv_unbal)
 
 make_fixture(name::Symbol) = getfield(FIXTURES, name)()
 

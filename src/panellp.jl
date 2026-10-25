@@ -13,6 +13,16 @@ the left-hand side of `f` on its right-hand side, absorbing the `fe()` terms.
 - Right-hand side: columns and functions of columns, interactions `s & X`, `lags(x, p)`,
   `lags(x, a:b)`, `firstdiff(x)`, and fixed effects `fe(v)`, `fe(a) & fe(b)`. An intercept
   is included when there are no fixed effects (unless `0 +`).
+- Panel LP-IV: one block `(endo ~ inst)`, e.g. `(s & ffr ~ s & mp)`, makes the fit two-stage
+  least squares (Almuzara & Sancibrián 2026, §3.4) on each horizon's fixed-effects
+  design: the endogenous regressors on the left (listed first among the coefficients,
+  and the default `shock`), the excluded instruments on the right; the other regressors
+  are exogenous and instrument themselves. Every variance applies to the IV scores
+  X̂ ξ̂ (ξ̂ the structural residual); `TLAHR(refine = false)` is the paper's LP-IV variance.
+  An instrument absorbed by the fixed effects or collinear with the exogenous regressors
+  (or with earlier instruments) is left out of the first stage, with a note; a horizon with
+  fewer instruments than endogenous regressors left is `:underidentified`. Only with
+  `WithinFE`.
 
 # Keywords
 - `id`, `time`: the unit and period columns. Integer periods are consecutive integers;
@@ -22,7 +32,8 @@ the left-hand side of `f` on its right-hand side, absorbing the `fe()` terms.
 - `estimator`: [`WithinFE`](@ref) (fixed effects; pooled OLS without them),
   [`SplitPanelJackknife`](@ref), [`CDOLS`](@ref) or [`LagAugmented`](@ref).
 - `shock`: coefficient name(s) of the shock; by default the columns of the first
-  regressor. Required when the formula has interaction terms and other regressors.
+  regressor (the endogenous ones with an IV block). Required when the formula has
+  interaction terms and other regressors.
 - `subset`: a Bool column or vector restricting the estimation sample *after* leads and
   lags are computed (they may read outside it).
 - `sample`: `:horizon` (each horizon its own complete cases) or `:common` (the
@@ -53,6 +64,7 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
         "the id column cannot be called `time`, nor the time column `unit`"))
     horizons = _horizons(horizon)
     d = _build_design(f, data; id, time, frequency, subset, clusters, shock)
+    isempty(d.endo) || _check_iv(estimator)
     _validate(estimator, d, f)
     d.response isa PlainResponse && horizons != 0:0 &&
         throw(ArgumentError(
@@ -80,7 +92,8 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
         nrows(p), p.pmin, p.pmax)
     r = PanelLocalProjection(estimator, absorb, f, d.responsename, d.coefnames,
         d.intercept, d.coefnames[d.shockcols], horizons, fits, d.groupnames, d.ngroups,
-        d.fenames, panel, sample, singletons, lags, d.owner, d.lagorder)
+        d.fenames, panel, sample, singletons, lags, d.owner, d.lagorder,
+        d.coefnames[d.endo], d.instnames)
     foreach(note -> @warn(note), _fitnotes(r))
     return r
 end
@@ -140,6 +153,11 @@ function _check_identified(fits::Vector{HorizonFit}, d::PanelDesign, time::Symbo
     any(f -> f.status === :spj_half_singular, fits) && throw(ArgumentError(
         "no horizon can be estimated: at every horizon the shock is not identified or a " *
         "split-panel half is rank-deficient ($(_halfcause(fits, d.coefnames)))"))
+    any(f -> f.status === :singular, fits) || throw(ArgumentError(
+        "the model is underidentified at every horizon: once the fixed effects and the " *
+        "exogenous regressors are partialled out, fewer excluded instruments than " *
+        "endogenous regressors are left, or the instruments do not predict every " *
+        "endogenous regressor (instruments $(join(repr.(d.instnames), ", ")))"))
     f = fits[findfirst(f -> f.status === :singular, fits)]
     absorbed = [d.coefnames[j] for j in d.shockcols if f.absorbed[j]]
     if isempty(absorbed)
@@ -200,6 +218,12 @@ function _fitnotes(r::PanelLocalProjection)
     isempty(h) || push!(notes,
         "the shock is absorbed by the fixed effects or collinear in the sample of " *
         "h = $(_hlist(h)); coefficients are NaN")
+    h = hs(f -> f.status === :underidentified)
+    isempty(h) || push!(notes,
+        "underidentified at h = $(_hlist(h)) (once the fixed effects and the exogenous " *
+        "regressors are partialled out, fewer excluded instruments than endogenous " *
+        "regressors are left, or the instruments do not predict every endogenous " *
+        "regressor); coefficients are NaN")
     h = hs(f -> f.status === :spj_half_singular)
     isempty(h) || push!(notes,
         "a split-panel half is rank-deficient at h = $(_hlist(h)) " *
@@ -217,6 +241,16 @@ function _fitnotes(r::PanelLocalProjection)
         end
         isempty(items) || push!(notes, "omitted, $label: $(join(items, "; "))")
     end
+    items = String[]
+    for (l, nm) in enumerate(r.instruments)
+        h = hs(f -> f.status === :ok && !f.instkeep[l])
+        isempty(h) && continue
+        push!(items, h == estimated ? nm : "$nm (h = $(_hlist(h)))")
+    end
+    isempty(items) || push!(notes,
+        "instruments left out of the first stage (absorbed by the fixed effects, or " *
+        "collinear with the exogenous regressors or the other instruments): " *
+        join(items, "; "))
     h = hs(f -> !f.converged)
     isempty(h) || push!(notes,
         "fixed-effect absorption did not converge at h = $(_hlist(h)); raise `maxiter` or " *

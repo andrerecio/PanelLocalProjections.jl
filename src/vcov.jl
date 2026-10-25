@@ -251,6 +251,11 @@ function _prepare(s::TLAHR, r::PanelLocalProjection)
     r.estimator isa SplitPanelJackknife && throw(ArgumentError(
         "TLAHR is the inference of a lag-augmented fixed-effects regression, not of the " *
         "split-panel jackknife; use Clustered or DriscollKraaySE"))
+    s.refine && !isempty(r.endogenous) &&
+        throw(ArgumentError(
+            "TLAHR(refine = true) is not available for panel LP-IV yet (Almuzara & Sancibrián " *
+            "define the refinement for OLS only); TLAHR(refine = false) is their LP-IV " *
+            "variance, CR0 by period on the IV scores (supplement A.4)"))
     if s.refine
         for f in r.fits
             f.status === :ok || continue

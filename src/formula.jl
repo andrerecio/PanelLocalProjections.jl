@@ -157,6 +157,9 @@ function _inner(t::StatsModels.FunctionTerm)
     elseif t.f === (&)
         # `&` inside a helper call is protected by @formula: an interaction of its args
         return ProductTerm(Any[_inner(a) for a in t.args])
+    elseif t.f === (~)
+        # likewise `~`: an IV block inside a function call
+        _inner(StatsModels.FormulaTerm(t.args[1], t.args[2]))
     elseif t.f isa Function && nameof(t.f) in (:lag, :lead) &&
            nameof(parentmodule(t.f)) in (:ShiftedArrays, :StatsModels)
         # ShiftedArrays' lag/lead (re-exported by StatsModels) shift by row position
@@ -169,8 +172,8 @@ function _inner(t::StatsModels.FunctionTerm)
 end
 function _inner(t::StatsModels.FormulaTerm)
     throw(ArgumentError(
-        "instrumental-variable blocks (endo ~ inst) are not supported yet: panel LP-IV is " *
-        "planned for v0.2"))
+        "an instrumental-variable block (endo ~ inst) is a right-hand-side term of its own; " *
+        "it cannot be nested inside other terms"))
 end
 _inner(t) = throw(ArgumentError("unsupported formula term $t"))
 
@@ -225,18 +228,28 @@ function _fe_term(t)
 end
 
 """
-    _rewrite_rhs(rhs) -> (regressors, fes, intercept)
+    _rewrite_rhs(rhs) -> (regressors, fes, intercept, iv)
 
-Regressors in formula order (StatsModels orders main effects before interactions), the
-absorbed fixed effects, and the intercept request: `:default`, `:yes` (`1 +`) or `:no`
-(`0 +` / `-1`).
+Exogenous regressors in formula order (StatsModels orders main effects before
+interactions), the absorbed fixed effects, the intercept request (`:default`, `:yes` for
+`1 +`, `:no` for `0 +` / `-1`), and the instrumental-variable block `(endo ~ inst)` as
+(endogenous terms, excluded-instrument terms), or `nothing`.
 """
 function _rewrite_rhs(rhs)
     terms = rhs isa Tuple ? rhs : (rhs,)
     regs = Any[]
     fes = FETerm[]
     intercept = :default
+    iv = nothing
     for t in terms
+        if t isa StatsModels.FormulaTerm
+            iv === nothing || throw(ArgumentError(
+                "the formula has two instrumental-variable blocks; write one, " *
+                "(endo1 + endo2 ~ inst1 + inst2 + …), with every endogenous regressor on " *
+                "its left and every excluded instrument on its right"))
+            iv = _rewrite_iv(t)
+            continue
+        end
         if t isa StatsModels.ConstantTerm
             if t.n == 1
                 intercept = :yes
@@ -254,7 +267,27 @@ function _rewrite_rhs(rhs)
         end
         push!(regs, _inner(t))
     end
-    return regs, fes, intercept
+    return regs, fes, intercept, iv
+end
+
+# The block (endo ~ inst) of a panel LP-IV: its endogenous regressors and excluded
+# instruments, each side a sum of right-hand-side terms (fixed effects and constants are
+# not: they belong to both stages, outside the block).
+function _rewrite_iv(t::StatsModels.FormulaTerm)
+    function side(x, what)
+        out = Any[]
+        for c in (x isa Tuple ? x : (x,))
+            c isa StatsModels.ConstantTerm && throw(ArgumentError(
+                "a constant cannot be $what in (endo ~ inst): the intercept, when there is " *
+                "one, is an exogenous regressor of both stages"))
+            _fe_term(c) === nothing || throw(ArgumentError(
+                "fe() terms cannot be inside (endo ~ inst): absorb fixed effects outside the " *
+                "block, where they apply to both stages"))
+            push!(out, _inner(c))
+        end
+        return out
+    end
+    return (side(t.lhs, "endogenous"), side(t.rhs, "an instrument"))
 end
 
 # ---------------------------------------------------------------------------------------

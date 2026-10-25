@@ -85,6 +85,75 @@ The full design and the rationale for every convention are in the approved plan.
 - [x] Phase 5 gate: `Pkg.test()` on 1.12 and 1.10 (35709 tests), format, fixtures, strict docs build, cross-checks from an empty ado tree
 - [x] Commit
 
+## Phase 6: Panel LP-IV (v0.2)
+
+Design: `docs/notes/design/lpiv_design.md` (gitignored). Method: A&S main §3.4 and supplement A.4.
+Per horizon, 2SLS on the FE-absorbed sample. The fit stores the bread (X̂'X̂)⁻¹ and the scores X̂ ξ̂, where ξ̂ is the
+structural residual. Every existing variance then applies unchanged, and `TLAHR(refine = false)` is A.4 exactly.
+
+### 6a: IV core
+- [x] Synthetic fixtures `fx_lpiv` (balanced) and `fx_lpiv_unbal`, using the eq. (14) DGP:
+  ffr_t = 0.5 ffr_{t−1} + X_t + 0.6 Z_t and mp_t = X_t + 0.5 ν_t, with group dummies `g1`–`g3`
+- [x] Stata: `ivreghdfe` pinned (`bfb5577`); `ivreg2`, `ranktest`, `xtivreg2`, `weakivtest` (SSC) in
+  `setup_stata.do`; ado manifest re-baselined (new files only); `VERSIONS.md`
+- [x] Formula: one `(endo ~ inst)` block of RHS terms (products, `lags`, `firstdiff`). Errors for:
+  - `fe()` or a constant inside the block;
+  - two blocks, or a block nested in a term;
+  - an exogenous regressor listed as an instrument;
+  - fewer instruments than endogenous columns.
+
+  An instrument numerically collinear with a regressor is dropped from the first stage with a note.
+- [x] Design: endogenous columns first and `PanelDesign.Z`; `shock` defaults to the endogenous columns. IV is
+  rejected with `SplitPanelJackknife`, `CDOLS` and (until 6b) `LagAugmented`
+- [x] Fit: `[y X Z]` absorbed in one buffer.
+  - Screen: an absorbed endogenous shock makes the horizon `:singular`; absorbed instruments are dropped, and
+    too few left gives `:underidentified`.
+  - First stage by FWL: pivoted QR of the exogenous columns, then the instruments in order by Gram–Schmidt
+    (the later of collinear instruments is dropped, with a note).
+  - Second stage: bread (X̂'X̂)⁻¹, residual ỹ − X̃β, scores X̂ξ̂.
+  - Identification check (`_identified`): endogenous regressors the instruments do not predict, or with
+    collinear fitted values, make the horizon `:underidentified`.
+- [x] `Robust`, `Clustered` (1- and 2-way), `DriscollKraaySE`, `CosineHAR` and `TLAHR(refine = false)` on IV
+  fits; `TLAHR(refine = true)` errors until 6b; `show` lists the instrumented and the instruments
+- [x] Identities and oracles (`test/test_lpiv.jl`):
+  - coefficients and every variance equal to a dummy-variable 2SLS oracle;
+  - (x ~ x) is OLS (coefficients, every variance and df, to round-off);
+  - just-identified equals (Z'X)⁻¹Z'y;
+  - several endogenous regressors.
+- [x] Cross-checks (`test/test_crosscheck_p6.jl`):
+  - `ivreghdfe` (robust, cluster id / t / two-way, `dkraay`), `xtivreg2, fe`, and several endogenous
+    regressors (160 rows);
+  - fixest `feols(y ~ w | fe | endo ~ inst)` (150 rows);
+  - b 5e-15, se 2e-10.
+
+  ivreghdfe's clustered factor with a fixed effect nested in the cluster differs from reghdfe's, as
+  documented.
+- [x] Adversarial review (2 lenses: code; econometrics and tests with 14 mutations). Fixed:
+  - round-off fitted values reached `_ols` and became arbitrary coefficients; now `:underidentified`;
+  - `synthetic()` mixed X̂ and the structural residual on IV fits; now IV fits store none.
+
+  Tests added: over-identified 2SLS, collinear exogenous regressors, the instrument tolerance, per-horizon
+  underidentification. The surviving mutations M8, M9, M12 and M14 are now killed. Non-IV fits are
+  bit-identical to HEAD (180 checks).
+- [ ] Phase 6a gate; commit
+
+### 6b: lag augmentation and t-LAHR for IV
+- [ ] `LagAugmented` with IV: the lags of the endogenous columns are endogenous, instrumented by the same lags of
+  the instruments; the lags of y are exogenous
+- [ ] `ICLags` on IV fits: the criterion on the reduced-form synthetic regression (documented extension)
+- [ ] Synthetic series from X̂; `TLAHR(refine = false)` = A&S A.4; `TLAHR(refine = true)` on IV fits stays an
+  error pointing to `refine = false` (user decision 2026-10-25, "fine for the moment"; the X̂ extension or A.4 as
+  the IV default can be revisited)
+- [ ] Monte Carlo of the A&S LP-IV design (Figures 1–2, panels d–f): refined vs A.4 vs DK vs two-way
+
+### 6c: diagnostics, docs, release
+- [ ] `firststage(r; vcov)`: first-stage coefficients, the Kleibergen–Paap rk Wald F with the chosen variance,
+  and the Montiel Olea–Pflueger effective F (one endogenous column); cross-checks against `ivreg2`'s `widstat`
+  and `weakivtest`
+- [ ] Docs: `methods/lpiv.md`; CFFS23 / JL24 IV mappings in `replication/firm_level_wip.md`;
+  Jordà–Schularick–Taylor trilemma (if the data are public)
+- [ ] v0.2.0
+
 ## After v0.1
 - [ ] Adversarial review of the Phase 4 review fixes and of the Phase 5 memory changes (deferred; started twice, stopped for time). Scope:
   - econometrics: the ω_t-weighted synthetic regression (CR2 by period), the ω-weighted criterion with its k(p) penalty and its rule for repeated regressions, residualising on every same-aggregate regressor (`_sameagg`), and the ownership rules (`_owners`);
@@ -92,7 +161,6 @@ The full design and the rationale for every convention are in the approved plan.
   - tests and docs: mutation tests of the fixes, and every number changed in `methods/tlahr.md` and `audit/as_code.md`.
 
   Re-run the first review's reproductions and fuzzers on the current code. Fix the confirmed findings in a follow-up commit.
-- Panel LP-IV, with t-LAHR for IV (A&S supp. §B) and ivreghdfe/xtivreg2 cross-checks
 - Joint (sup-t) bands across horizons, built on the stored group score sums
 - Negative horizons (pre-trends), lagged-FE interactions, a `panelshift` helper
 - Firm-level replications (OW20, CFFS23, JL24) with user-supplied Compustat data
