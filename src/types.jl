@@ -195,6 +195,12 @@ in the formula): p̂ is then the larger, so the formula's lags count towards it.
 - `vars = :outcome_and_shock` also adds p lags of each shock to candidate p (each counted
   in k(p)).
 - `sample = :common` fits every candidate on the `pmax`-lag sample.
+
+For panel LP-IV the criterion is that of the reduced form: the excluded instruments take
+the place of the endogenous regressors, as if the formula were the OLS regression of the
+outcome on them, and the instrument with the exposure of the (first) endogenous shock
+(`s & mp` for `s & ffr`) is its shock, whose exposure weights the residuals. With no such
+instrument, use `ConstantLags` or `CappedLags`.
 """
 struct ICLags <: LagRule
     criterion::Symbol
@@ -255,6 +261,11 @@ numerically: `s & L1.X` is the lag of the shock `s & L0.X`), is not added again;
 the formula's columns span (Δy lags with `lags(y, 1:2)` in the formula) is left out of the
 regression. Requires unit fixed effects, `fe(id)`, or finer ones nested in the units (e.g.
 `fe(id) & fe(state)`).
+
+With an IV block (panel LP-IV, Almuzara & Sancibrián 2026, §3.4), the lags of an
+endogenous shock are endogenous, instrumented by the same lags of every excluded
+instrument; the lags of the outcome are exogenous. [`ICLags`](@ref) then works on the
+reduced form, the instruments in place of the endogenous regressors.
 """
 struct LagAugmented{R <: LagRule} <: PanelLPEstimator
     rule::R
@@ -364,6 +375,11 @@ struct PanelDesign{R <: PanelResponse}
     endo::Vector{Int}
     Z::Matrix{Float64}
     instnames::Vector{String}
+    # per instrument: 0, or ℓ for a lag ℓ added by LagAugmented; and its exposure structure
+    # (as `aggseries`/`exposures`), which the reduced form of `ICLags` uses
+    zlagorder::Vector{Int}
+    zaggseries::Vector{Vector{Float64}}
+    zexposures::Vector{Vector{Float64}}
 end
 
 # ---------------------------------------------------------------------------------------
@@ -477,6 +493,7 @@ struct PanelLocalProjection{E <: PanelLPEstimator}
     addedlag::Vector{Int}                # per coefficient: ℓ for a lag added by LagAugmented
     endogenous::Vector{String}           # panel LP-IV: instrumented coefficients (else empty)
     instruments::Vector{String}          # panel LP-IV: excluded instruments (else empty)
+    instlag::Vector{Int}                 # per instrument: ℓ for a lag added by LagAugmented
 end
 
 # ---------------------------------------------------------------------------------------

@@ -113,3 +113,60 @@ end
         end
     end
 end
+
+# Lag-augmented panel LP-IV (Phase 6b): p = min(h, 2) lags of y, of s & ffr (endogenous)
+# and of s & mp (instruments): LagAugmented(CappedLags(2)). Stata:
+# crosscheck/stata/p6b_lpiv_la.do; R: crosscheck/R/p6b_fixest_la.R.
+@testitem "Stata and R: lag-augmented LP-IV" tags = [:crosscheck, :stata, :r, :lpiv, :tlahr] begin
+    using StatsModels
+    include(joinpath(@__DIR__, "support", "PLPDGPs.jl"))
+    using .PLPDGPs: read_csv
+    const FIX = joinpath(@__DIR__, "fixtures")
+    function readref(path)
+        lines = readlines(path)
+        hdr = Tuple(Symbol.(split(lines[1], ",")))
+        return [NamedTuple{hdr}(Tuple(strip.(split(l, ",")))) for l in lines[2:end]]
+    end
+    num(s) = s == "." || isempty(s) ? NaN : parse(Float64, s)
+    st = readref(joinpath(FIX, "stata", "p6b_lpiv_la.csv"))
+    fx = readref(joinpath(FIX, "r", "p6b_fixest_la.csv"))
+    @test length(st) == 40 && length(fx) == 96
+    est = LagAugmented(CappedLags(2))
+    kw = (; id = :id, time = :t, horizon = 0:4, estimator = est)
+    ivfac(fit, f, G) = (n = fit.dof.nobs;
+        (n - 1) / (n - fit.dof.k - (fit.dof.df_a - fit.dof.felevels[f])) * G / (G - 1))
+    term = Dict("fit_sffr" => "s & ffr", "fit_Lsffr1" => "L1.(s & ffr)",
+        "fit_Lsffr2" => "L2.(s & ffr)", "w" => "w", "Ly1" => "L1.y", "Ly2" => "L2.y")
+    for ds in ("fx_lpiv", "fx_lpiv_unbal")
+        d = read_csv(joinpath(FIX, "synthetic", "$ds.csv"))
+        r2 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)), d; kw...)
+        r1 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id)), d; kw...)
+        @test lagorder(r2) == [0, 1, 2, 2, 2]
+        cv0 = vcov(Clustered(:time; ssc = :none), r2)
+        cv = Dict("la_twfe_robust" => vcov(Robust(), r2), "la_twfe_dk3" => vcov(DriscollKraaySE(2), r2),
+            "la_fe_cl_t" => vcov(Clustered(:time), r1))
+        for x in filter(x -> x.dataset == ds, st)
+            h = parse(Int, x.h)
+            r = x.spec == "la_fe_cl_t" ? r1 : r2
+            fit = r.fits[h + 1]
+            @test coef(r, h)[1] ≈ num(x.b) rtol = 1e-12
+            @test fit.dof.nobs == parse(Int, x.N)
+            v = x.spec == "la_twfe_cl_t" ? ivfac(fit, 2, parse(Int, x.G)) * cv0.V[h + 1][1, 1] :
+                cv[x.spec].V[h + 1][1, 1]
+            @test sqrt(v) ≈ num(x.se) rtol = 1e-9
+        end
+        # fixest keeps singletons; clustered by period without correction it is t-LAHR
+        rk = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)), d; kw...,
+            singletons = :keep)
+        cvk = Dict("la_twfe_cl_t0" => vcov(TLAHR(refine = false), rk),
+            "la_twfe_hetero0" => vcov(Robust(; ssc = :none), rk))
+        tol = ds == "fx_lpiv" ? 1e-11 : 5e-9
+        for x in filter(x -> x.dataset == ds, fx)
+            h = parse(Int, x.h)
+            j = findfirst(==(term[x.term]), coefnames(rk))
+            @test coef(rk, h)[j] ≈ num(x.b) rtol = tol
+            @test sqrt(cvk[x.spec].V[h + 1][j, j]) ≈ num(x.se) rtol = tol
+            @test nobs(rk, h) == parse(Int, x.nobs)
+        end
+    end
+end

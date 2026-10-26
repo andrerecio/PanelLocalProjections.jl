@@ -59,20 +59,27 @@ The design with lags 1:pmax of the outcome (`_lagvar`) and of every shock column
 appended, named `L1.y`, `L1.(s & X)`, … (`lagorder` = the lag). A lag already among the
 regressors, whatever its name (e.g. `s & L1.X` for the lag of the shock `s & L0.X`), is not
 added again. The lag of an aggregate series times an exposure lags both.
+
+Panel LP-IV (Almuzara & Sancibrián 2026, §3.4): the lags of an endogenous shock are
+endogenous, and for each lag ℓ of an endogenous shock that is added, lag ℓ of every excluded
+instrument is appended to the instruments (`zlagorder`), unless equal to one of them; the
+lags of the outcome are exogenous. So the fit at horizon h depends on p(h) only.
 """
 function _with_lags(d::PanelDesign, ctx::_EvalContext, pmax::Int)
     pmax == 0 && return d
     lv = _lagvar(d.response)
-    vars = [(only(_names(lv)), _col1(lv, ctx), Float64[], Float64[])]
+    vars = [(only(_names(lv)), _col1(lv, ctx), Float64[], Float64[], false)]
     for j in d.shockcols
-        push!(vars, (d.coefnames[j], d.X[:, j], d.exposures[j], d.aggseries[j]))
+        push!(vars, (
+            d.coefnames[j], d.X[:, j], d.exposures[j], d.aggseries[j], j in d.endo))
     end
     cols = Vector{Float64}[]
     names = String[]
     order = Int[]
     lagexp = Vector{Float64}[]
     lagagg = Vector{Float64}[]
-    for (nm, v, e, a) in vars, l in 1:pmax
+    isendo = Bool[]
+    for (nm, v, e, a, en) in vars, l in 1:pmax
 
         lname = string("L", l, ".", _wrap(nm))
         (lname in d.coefnames || lname in names) && continue
@@ -85,15 +92,86 @@ function _with_lags(d::PanelDesign, ctx::_EvalContext, pmax::Int)
         push!(order, l)
         push!(lagexp, isempty(e) ? Float64[] : _gather(e, shift))
         push!(lagagg, isempty(a) ? Float64[] : _lagseries(a, l))
+        push!(isendo, en)
+    end
+    Z, instnames, zlag = d.Z, d.instnames, d.zlagorder
+    zagg, zexp = d.zaggseries, d.zexposures
+    if any(isendo)
+        zc = Vector{Float64}[]
+        endolags = Set(order[isendo])
+        for k in eachindex(d.instnames), l in 1:pmax
+
+            (d.zlagorder[k] == 0 && l in endolags) || continue
+            shift = _shift(d.pidx, -l)
+            x = _gather(view(d.Z, :, k), shift)
+            (any(c -> _samecol(x, view(d.Z, :, c)), axes(d.Z, 2)) ||
+             any(c -> _samecol(x, c), zc)) && continue
+            push!(zc, x)
+            instnames = vcat(instnames, string("L", l, ".", _wrap(d.instnames[k])))
+            zlag = vcat(zlag, l)
+            e, a = d.zexposures[k], d.zaggseries[k]
+            zexp = vcat(zexp, [isempty(e) ? Float64[] : _gather(e, shift)])
+            zagg = vcat(zagg, [isempty(a) ? Float64[] : _lagseries(a, l)])
+        end
+        isempty(zc) || (Z = hcat(d.Z, reduce(hcat, zc)))
     end
     isempty(cols) && return d
+    K = length(d.coefnames)
     coefnames = vcat(d.coefnames, names)
     exposures = vcat(d.exposures, lagexp)
+    endo = vcat(d.endo, K .+ findall(isendo))
     return PanelDesign(d.pidx, d.response, d.responsename, d.columns,
         hcat(d.X, reduce(hcat, cols)), coefnames, d.shockcols, d.intercept, d.rhsok, d.fe,
         d.fenames, d.groups, d.groupnames, d.ngroups, d.subset, vcat(d.aggseries, lagagg),
         exposures, _owners(coefnames, d.shockcols, exposures), d.timefe,
-        vcat(d.lagorder, order), d.endo, d.Z, d.instnames)
+        vcat(d.lagorder, order), endo, Z, instnames, zlag, zagg, zexp)
+end
+
+"""
+    _reducedform(d) -> PanelDesign
+
+The reduced form of a panel LP-IV design: the excluded instruments in place of the
+endogenous columns, right after the intercept (if any). The endogenous shocks are replaced,
+at the place of the first of them among the shocks, by the first instrument with the same
+exposure as that shock (`_sameexposure`: `s & mp` for `s & ffr`), which therefore weights
+the `ICLags` criterion when it leads; an error when there is none. The other instruments
+are plain regressors (one absorbed by the fixed effects is omitted, as in the IV fit). The
+design itself when it has no IV block.
+"""
+function _reducedform(d::PanelDesign)
+    isempty(d.endo) && return d
+    lead = d.intercept ? [1] : Int[]
+    exo = [j for j in axes(d.X, 2) if !(j in d.endo) && !(j in lead)]
+    L = size(d.Z, 2)
+    X = hcat(d.X[:, lead], d.Z, d.X[:, exo])
+    coefnames = vcat(d.coefnames[lead], d.instnames, d.coefnames[exo])
+    off = length(lead)
+    pos(j) = off + L + findfirst(==(j), exo)
+    shockcols = Int[]
+    for j in d.shockcols
+        if !(j in d.endo)
+            push!(shockcols, pos(j))
+        elseif !any(k -> k <= off + L, shockcols)
+            e1 = d.exposures[j]
+            k1 = isempty(e1) ? nothing :
+                 findfirst(
+                k -> !isempty(d.zexposures[k]) && _sameexposure(d.zexposures[k], e1),
+                1:L)
+            k1 === nothing && throw(ArgumentError(
+                "ICLags on panel LP-IV weights the reduced form with the exposure of the " *
+                "shock $(repr(d.coefnames[j])), and no excluded instrument has that exposure " *
+                "(an aggregate series times the same unit-level variable): use ConstantLags " *
+                "or CappedLags"))
+            push!(shockcols, off + k1)
+        end
+    end
+    exposures = vcat(d.exposures[lead], d.zexposures, d.exposures[exo])
+    return PanelDesign(d.pidx, d.response, d.responsename, d.columns, X, coefnames,
+        shockcols, d.intercept, d.rhsok, d.fe, d.fenames, d.groups, d.groupnames,
+        d.ngroups, d.subset, vcat(d.aggseries[lead], d.zaggseries, d.aggseries[exo]),
+        exposures, _owners(coefnames, shockcols, exposures), d.timefe,
+        vcat(d.lagorder[lead], d.zlagorder, d.lagorder[exo]), Int[],
+        zeros(size(d.X, 1), 0), String[], Int[], Vector{Float64}[], Vector{Float64}[])
 end
 
 # `mask` restricted to the rows where the lags of horizon h are defined.
@@ -103,6 +181,10 @@ function _lagmask!(mask::BitVector, est::_ResolvedLags, d::PanelDesign, h::Int)
     for j in eachindex(d.lagorder)
         0 < d.lagorder[j] <= p || continue
         mask .&= isfinite.(view(d.X, :, j))
+    end
+    for k in eachindex(d.zlagorder)
+        0 < d.zlagorder[k] <= p || continue
+        mask .&= isfinite.(view(d.Z, :, k))
     end
     return mask
 end
@@ -120,7 +202,10 @@ function _augment(
 end
 function _augment(est::LagAugmented, d::PanelDesign, ctx::_EvalContext, base::BitVector,
         horizons::UnitRange{Int}, singletons::Symbol, absorb::AbsorptionMethod)
-    sel, lags = _lagrule(est.rule, d, ctx, base, horizons, singletons, absorb)
+    # panel LP-IV: the information criterion works on the reduced form (the instruments in
+    # place of the endogenous regressors); the other rules need no regression
+    dl = est.rule isa ICLags ? _reducedform(d) : d
+    sel, lags = _lagrule(est.rule, dl, ctx, base, horizons, singletons, absorb)
     return _with_lags(d, ctx, maximum(lags)), _ResolvedLags(lags, horizons), sel
 end
 

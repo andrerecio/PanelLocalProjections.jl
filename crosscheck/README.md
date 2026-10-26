@@ -195,3 +195,19 @@ removed). The model: `leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id) + 
 
 The Kleibergen–Paap F of each ivreghdfe fit (`e(widstat)`) is recorded in the `F` column of
 `p6_lpiv.csv`, for the first-stage diagnostics of Phase 6c.
+
+### Phase 6b: lag-augmented panel LP-IV
+
+Same panels and test file. At horizon h, p = min(h, 2) lags of y (exogenous) and of
+`s & ffr` (endogenous, instrumented by the same lags of `s & mp`):
+`LagAugmented(CappedLags(2))` with `leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) [+ fe(t)]`.
+
+| Reference command (Stata `xtset id t`) | `panellp` options | `vcov` spec | Agreement |
+|---|---|---|---|
+| `ivreghdfe Fy w L(1/p).y (sffr L(1/p).sffr = smp L(1/p).smp), absorb(id t) cluster(t)` | `fe(id) + fe(t)`, drop | `Clustered(:time; ssc = :none)` × ivreghdfe's nested-cluster factor (Phase 6a) | b within 1e-12, se 1e-9 |
+| the same, `robust` / `dkraay(3)` | as above | `Robust()` / `DriscollKraaySE(2)` | as above |
+| the same, `absorb(id) cluster(t)` | `fe(id)` | `Clustered(:time)` | as above |
+| R `feols(Fy ~ w + Ly1 + … \| id + t \| sffr + Lsffr1 + … ~ smp + Lsmp1 + …, fixef.rm = "none")`, `cluster = ~t` and `"hetero"` with `ssc(K.adj = FALSE, G.adj = FALSE)` | keep | `TLAHR(refine = false)` (A&S supplement A.4), `Robust(; ssc = :none)` | 1e-11 balanced, 5e-9 unbalanced |
+
+`ICLags` on IV fits equals the criterion of the OLS reduced form (the instruments as the
+shocks), tested in `test/test_lpiv.jl`.

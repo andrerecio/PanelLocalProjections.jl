@@ -135,16 +135,38 @@ structural residual. Every existing variance then applies unchanged, and `TLAHR(
   Tests added: over-identified 2SLS, collinear exogenous regressors, the instrument tolerance, per-horizon
   underidentification. The surviving mutations M8, M9, M12 and M14 are now killed. Non-IV fits are
   bit-identical to HEAD (180 checks).
-- [ ] Phase 6a gate; commit
+- [x] Phase 6a gate; commit (19bf450)
 
 ### 6b: lag augmentation and t-LAHR for IV
-- [ ] `LagAugmented` with IV: the lags of the endogenous columns are endogenous, instrumented by the same lags of
-  the instruments; the lags of y are exogenous
-- [ ] `ICLags` on IV fits: the criterion on the reduced-form synthetic regression (documented extension)
-- [ ] Synthetic series from X̂; `TLAHR(refine = false)` = A&S A.4; `TLAHR(refine = true)` on IV fits stays an
-  error pointing to `refine = false` (user decision 2026-10-25, "fine for the moment"; the X̂ extension or A.4 as
-  the IV default can be revisited)
-- [ ] Monte Carlo of the A&S LP-IV design (Figures 1–2, panels d–f): refined vs A.4 vs DK vs two-way
+- [x] `LagAugmented` with IV:
+  - the lags of the endogenous shocks are endogenous, instrumented by the same lags of the instruments
+    (`zlagorder`, `r.instlag`);
+  - the lags of y are exogenous;
+  - horizon h uses lags ≤ p(h).
+
+  Equal to the hand-written regression (coefficients and every variance).
+- [x] `ICLags` on IV fits: the criterion of the reduced form (`_reducedform`), equal to the OLS reduced-form
+  fit's criterion to round-off
+- [x] `TLAHR(refine = false)` = A&S A.4; `TLAHR(refine = true)` on IV fits stays an error pointing to
+  `refine = false` (user decision 2026-10-25: option 1, "fine for the moment"; the X̂ extension or A.4 as the
+  IV default can be revisited). IV fits store no synthetic series
+- [x] Cross-checks: ivreghdfe (`p6b_lpiv_la.do`, 40 rows) and fixest (`p6b_fixest_la.R`, 96 rows) on the
+  lag-augmented regression
+- [x] Monte Carlo (`:mc`, `PLPDGPs.lpiv_mc`, 200 replications):
+  - t-LAHR coverage 0.85–0.91 at 90%; unit clustering 0.06–0.16;
+  - IV unbiased at h = 0, 1, where OLS is biased by +0.38;
+  - a small-T bias of about −0.05 at h ≥ 2 is common to every estimator.
+
+  The A&S Figures 1–2 LP-IV curves are not reproduced numerically (no table).
+- [x] Adversarial review (2 lenses; 10 mutations). Fixed:
+  - `ICLags` depended on the instrument order (now the instrument with the shock's exposure is the reduced-form
+    shock);
+  - an absorbed extra instrument stopped `ICLags`;
+  - instrument lags depended on pmax (now lag ℓ only with endogenous lag ℓ).
+
+  Tests added: later-starting instrument and outcome, two lagged instruments, fit notes. All mutations are now
+  killed.
+- [ ] Phase 6b gate; commit
 
 ### 6c: diagnostics, docs, release
 - [ ] `firststage(r; vcov)`: first-stage coefficients, the Kleibergen–Paap rk Wald F with the chosen variance,

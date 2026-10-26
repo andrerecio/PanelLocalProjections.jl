@@ -20,7 +20,7 @@ function _empty_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int;
 end
 
 """
-    _within_fit(d, y, mask, absorb, cols = all columns) -> NamedTuple
+    _within_fit(d, y, mask, absorb, cols = all columns, zcols = all instruments) -> NamedTuple
 
 Within transformation and OLS on the rows of `mask` and the columns `cols` (ascending, the
 shocks among them). `keep`, `absorbed` and `xsd` are over all columns of the design;
@@ -32,21 +32,23 @@ With an IV block (`d.endo`), the excluded instruments are absorbed in the same b
 the fit is two-stage least squares: the first stage projects the endogenous columns on the
 exogenous ones and the instruments (`_firststage_basis`), whose fitted values X̂ replace
 them in `Xk`; `B` is (X̂'X̂)⁻¹ and `resid` the structural residual ỹ − X̃β (with the
-endogenous columns themselves), so that the scores are X̂ ⊙ resid. `instkeep` marks the
-instruments in the first stage; `status` is `:underidentified` when fewer of them than
+endogenous columns themselves), so that the scores are X̂ ⊙ resid. `zcols` are the
+instruments of this fit (`LagAugmented`: those with lags ≤ p(h)), and `instkeep` (over all
+instruments) marks those in the first stage; `status` is `:underidentified` when fewer of them than
 endogenous columns are left.
 """
 function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
-        absorb::AbsorptionMethod, cols::Vector{Int} = collect(axes(d.X, 2)))
+        absorb::AbsorptionMethod, cols::Vector{Int} = collect(axes(d.X, 2)),
+        zcols::Vector{Int} = collect(axes(d.Z, 2)))
     rows = findall(mask)
-    nc, L = length(cols), size(d.Z, 2)
+    nc, L = length(cols), length(zcols)
     A = Matrix{Float64}(undef, length(rows), 1 + nc + L)
     A[:, 1] = view(y, rows)
     for (c, j) in enumerate(cols)
         A[:, c + 1] = view(d.X, rows, j)
     end
-    for l in 1:L
-        A[:, 1 + nc + l] = view(d.Z, rows, l)
+    for (l, k) in enumerate(zcols)
+        A[:, 1 + nc + l] = view(d.Z, rows, k)
     end
     rawall = _colstats(view(A, :, 2:size(A, 2)))
     raw = (; rawall.n, css = rawall.css[1:nc], ss = rawall.ss[1:nc])
@@ -61,15 +63,16 @@ function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
     absall = _absorbed_cols(view(A, :, 2:size(A, 2)), rawall, hasfe, d.intercept)
     xabs = absall[1:nc]
     K = length(d.coefnames)
-    instkeep = .!absall[(nc + 1):end]
+    instkeep = falses(size(d.Z, 2))
+    instkeep[zcols] = .!absall[(nc + 1):end]
     # 2SLS: the fitted values of the (kept) endogenous columns replace them in the buffer
     en = Int[k for (k, j) in enumerate(cols) if j in d.endo && !xabs[k]]
     Xen = zeros(length(rows), 0)
     if L > 0 && !isempty(en)
         ex = Int[k for k in 1:nc if !xabs[k] && !(k in en)]
-        zi = findall(instkeep)
+        zi = findall(.!absall[(nc + 1):end])
         Q, zk, rE = _firststage_basis(view(A, :, 2:size(A, 2)), ex, nc .+ zi)
-        instkeep[zi] = zk
+        instkeep[zcols[zi]] = zk
         Xen = A[:, 1 .+ en]
         if count(zk) < length(en) || !_identified(Q, rE, Xen)
             keep = falses(K)
@@ -236,7 +239,7 @@ function _fit_within(d::PanelDesign, h::Int, y::Vector{Float64}, mask::BitVector
     active = falses(length(d.coefnames))
     active[cols] .= true
     any(mask) || return _empty_fit(d, h, mask, singletons; active, nlags)
-    w = _within_fit(d, y, mask, absorb, cols)
+    w = _within_fit(d, y, mask, absorb, cols, findall(<=(nlags), d.zlagorder))
     w.status === :ok ||
         return _singular_fit(d, h, mask, singletons, w; status = w.status, active, nlags)
     groups = [view(g, w.rows) for g in d.groups]
@@ -473,20 +476,19 @@ end
 _validate(::PanelLPEstimator, d::PanelDesign, f) = nothing
 
 # Panel LP-IV (Almuzara & Sancibrián 2026, §3.4) is two-stage least squares on the
-# fixed-effects design; the other estimators have no IV version (yet).
-_check_iv(::WithinFE) = nothing
+# fixed-effects design, with or without lag augmentation; the other estimators have no IV
+# version.
+_check_iv(::Union{WithinFE, LagAugmented}) = nothing
 function _check_iv(est::PanelLPEstimator)
     why = est isa SplitPanelJackknife ?
           "the split-panel jackknife (Mei, Sheng & Shi 2026) is defined for OLS, and its " *
           "bias correction and variance are not established for 2SLS" :
           est isa CDOLS ?
           "cumulative-difference OLS (Ugarte-Ruiz 2026) has no IV version" :
-          est isa LagAugmented ?
-          "lag augmentation of panel LP-IV (lags of the endogenous regressors instrumented " *
-          "by lags of the instruments) is not implemented yet" :
           "$(nameof(typeof(est))) has no IV version"
     throw(ArgumentError(
-        "an instrumental-variable block (endo ~ inst) needs estimator = WithinFE(): $why"))
+        "an instrumental-variable block (endo ~ inst) needs estimator = WithinFE() or " *
+        "LagAugmented(…): $why"))
 end
 
 # Every use of the variables `ys` in term `t`, as (smallest lag, differenced).

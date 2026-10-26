@@ -2,6 +2,34 @@
 
 ## Unreleased (v0.2: panel LP-IV)
 
+### Phase 6b: lag augmentation and t-LAHR for panel LP-IV
+- `LagAugmented` with an IV block (Almuzara & Sancibrián 2026, §3.4): at horizon h, p(h)
+  lags of the outcome are exogenous, and p(h) lags of each endogenous shock are endogenous,
+  instrumented by the same lags of every excluded instrument (`r.instlag`). Each horizon
+  uses the instruments up to p(h).
+- `ICLags` on IV fits selects the lags on the reduced form: the instruments take the place
+  of the endogenous regressors, as in the OLS regression of the outcome on them. The
+  instrument with the endogenous shock's exposure (`s & mp` for `s & ffr`) is the
+  reduced-form shock and weights the criterion; the other instruments are plain regressors.
+- Lag ℓ of the instruments enters only with lag ℓ of an endogenous shock, so the fit at
+  horizon h depends only on p(h).
+- `TLAHR(refine = false)` on these fits is A&S's LP-IV variance (supplement A.4).
+  `TLAHR(refine = true)` remains an error on IV fits.
+- Cross-checks of the lag-augmented regression: ivreghdfe (clustered by period, robust,
+  `dkraay`) and fixest (clustered by period without correction, i.e. t-LAHR).
+- Monte Carlo (`:mc`) of a panel LP-IV design with an endogenous aggregate and a noisy
+  proxy (`PLPDGPs.lpiv_mc`):
+  - the 90% t-LAHR intervals cover at 0.85–0.91, and unit clustering at 0.06–0.16;
+  - IV removes OLS's +0.38 bias at h = 0.
+- Adversarial review (code; econometrics with 10 mutations). Fixed:
+  - the `ICLags` choice depended on the order of the instruments;
+  - an absorbed extra instrument stopped `ICLags`;
+  - instrument lags depended on pmax.
+
+  Tests were added for instruments and outcomes that start later, for two lagged
+  instruments, and for the fit notes; every mutation is now caught. Non-IV fits are
+  bit-identical to 6a.
+
 ### Phase 6a: IV core
 - Panel LP-IV (Almuzara & Sancibrián 2026, §3.4): a block `(endo ~ inst)` in the formula,
   e.g. `leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)`, makes each horizon's fit

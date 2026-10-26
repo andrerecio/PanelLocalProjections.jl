@@ -136,7 +136,7 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
         throw(ArgumentError("duplicated regressors: $(coefnames[findall(_nonunique(coefnames))])"))
     nendo = sum(t -> length(_names(t)), endoterms; init = 0)
     endo = collect((1:nendo) .+ intercept)
-    Z, instnames = _instruments(instterms, ctx, coefnames, endo)
+    Z, instnames, zexps = _instruments(instterms, ctx, coefnames, endo)
     shockcols = shock === nothing && !isempty(endo) ? copy(endo) :
                 _select_shocks(shock, coefnames, regs)
     any(j -> coefnames[j] == "(Intercept)", shockcols) &&
@@ -205,18 +205,22 @@ function _build_design(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbo
         shockcols, intercept, rhsok, fecodes, fenames, groups, groupnames, ngroups,
         _subsetmask(subset, cols, n), aggseries, exposures,
         _owners(coefnames, shockcols, exposures), timefe, zeros(Int, length(coefnames)),
-        endo, Z, instnames)
+        endo, Z, instnames, zeros(Int, length(instnames)), first.(zexps), last.(zexps))
 end
 
-# The excluded instruments of an IV block, evaluated on the panel (n × 0 without one), and
-# their names. Exogenous regressors instrument themselves: naming one among the excluded
-# instruments is an error. An instrument may be an endogenous regressor (that column is
+# The excluded instruments of an IV block, evaluated on the panel (n × 0 without one),
+# their names and their exposure structure (`_exposure`). Exogenous regressors instrument
+# themselves: naming one among the excluded instruments is an error. An instrument may be an endogenous regressor (that column is
 # then exogenous after all: `(x ~ x)` is OLS).
 function _instruments(instterms::Vector{Any}, ctx::_EvalContext,
         coefnames::Vector{String}, endo::Vector{Int})
-    isempty(instterms) && return zeros(_n(ctx), 0), String[]
-    Z = reduce(hcat, [_cols(t, ctx) for t in instterms])
+    isempty(instterms) &&
+        return zeros(_n(ctx), 0), String[], Tuple{Vector{Float64}, Vector{Float64}}[]
+    blocks = [_cols(t, ctx) for t in instterms]
+    Z = reduce(hcat, blocks)
     names = reduce(vcat, [_names(t) for t in instterms])
+    exps = [_exposure(t, c, view(B, :, c), ctx)
+            for (t, B) in zip(instterms, blocks) for c in axes(B, 2)]
     allunique(names) ||
         throw(ArgumentError("duplicated instruments: $(names[findall(_nonunique(names))])"))
     for nm in names
@@ -230,7 +234,7 @@ function _instruments(instterms::Vector{Any}, ctx::_EvalContext,
         "the IV block has $(length(endo)) endogenous regressor(s) " *
         "($(join(repr.(coefnames[endo]), ", "))) but $(length(names)) excluded " *
         "instrument(s): the model is underidentified"))
-    return Z, names
+    return Z, names, exps
 end
 
 # Whether a fixed-effect dimension is nested in the periods (time, or group × time).

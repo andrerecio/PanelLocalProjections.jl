@@ -415,6 +415,61 @@ function mss_toy(rng; N = 30, T = 60, ρ = 0.8, β = -0.6, δ = 0.2, η = 0.2)
     return (id = id, t = tt, y = ys, x = xs)
 end
 
+"""
+    lpiv_mc(rng; N = 100, T = 80, ρ = 0.6)
+
+One draw of a panel LP-IV design after Almuzara–Sancibrián (2026, §3.4, eq. 14):
+
+    ffr_t = 0.5 ffr_{t-1} + X_t + 0.6 Z_t      endogenous aggregate (b₀ = 1)
+    mp_t  = X_t + 0.5 ν_t                      proxy (a₀ = 1)
+    y_it  = μ_i + ρ y_{i,t-1} + s_i X_t + γ_i Z_t + u_it,   γ_i = 1.5 s_i + 0.5 N(0, 1)
+
+with X, Z, ν, u ~ N(0, 1) iid, s_i = 1 + N(0, 1), μ_i ~ N(0, 1), and a 100-period burn-in.
+The LP-IV estimand of the response to s_i ffr_t is β(h) = ρ^h. γ_i correlated with s_i makes
+OLS on s_i ffr_t biased (Z_t moves both): with lag augmentation, by about
+(1 + 0.6·1.5)/(1 + 0.6²) − 1 ≈ 0.4 at h = 0. Not a committed fixture: the Monte Carlo tests
+draw from it.
+"""
+function lpiv_mc(rng; N = 100, T = 80, ρ = 0.6)
+    burn = 100
+    TT = burn + T
+    X = zeros(TT)
+    Z = zeros(TT)
+    ffr = zeros(TT)
+    mp = zeros(TT)
+    for t in 1:TT
+        X[t] = randn(rng)
+        Z[t] = randn(rng)
+        ffr[t] = (t == 1 ? 0.0 : 0.5 * ffr[t - 1]) + X[t] + 0.6 * Z[t]
+        mp[t] = X[t] + 0.5 * randn(rng)
+    end
+    id = Int[]
+    tt = Int[]
+    ys = Float64[]
+    ss = Float64[]
+    fs = Float64[]
+    ms = Float64[]
+    for i in 1:N
+        si = 1.0 + randn(rng)
+        γ = 1.5 * si + 0.5 * randn(rng)
+        μ = randn(rng)
+        yp = μ / (1 - ρ)
+        for k in 1:TT
+            yk = μ + ρ * yp + si * X[k] + γ * Z[k] + randn(rng)
+            if k > burn
+                push!(id, i)
+                push!(tt, k - burn)
+                push!(ys, yk)
+                push!(ss, si)
+                push!(fs, ffr[k])
+                push!(ms, mp[k])
+            end
+            yp = yk
+        end
+    end
+    return (; id, t = tt, y = ys, s = ss, ffr = fs, mp = ms)
+end
+
 "Name → generator for every committed synthetic fixture."
 const FIXTURES = (fx_balanced = fx_balanced, fx_unbalanced = fx_unbalanced,
     fx_dated = fx_dated, fx_cdols = fx_cdols, fx_tlahr = fx_tlahr,

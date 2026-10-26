@@ -21,8 +21,9 @@ the left-hand side of `f` on its right-hand side, absorbing the `fe()` terms.
   X̂ ξ̂ (ξ̂ the structural residual); `TLAHR(refine = false)` is the paper's LP-IV variance.
   An instrument absorbed by the fixed effects or collinear with the exogenous regressors
   (or with earlier instruments) is left out of the first stage, with a note; a horizon with
-  fewer instruments than endogenous regressors left is `:underidentified`. Only with
-  `WithinFE`.
+  fewer instruments than endogenous regressors left is `:underidentified`. With
+  `WithinFE` or [`LagAugmented`](@ref) (whose lags of an endogenous shock are instrumented
+  by lags of the instruments).
 
 # Keywords
 - `id`, `time`: the unit and period columns. Integer periods are consecutive integers;
@@ -93,7 +94,7 @@ function panellp(f::StatsModels.FormulaTerm, data; id::Symbol, time::Symbol, hor
     r = PanelLocalProjection(estimator, absorb, f, d.responsename, d.coefnames,
         d.intercept, d.coefnames[d.shockcols], horizons, fits, d.groupnames, d.ngroups,
         d.fenames, panel, sample, singletons, lags, d.owner, d.lagorder,
-        d.coefnames[d.endo], d.instnames)
+        d.coefnames[d.endo], d.instnames, d.zlagorder)
     foreach(note -> @warn(note), _fitnotes(r))
     return r
 end
@@ -243,7 +244,8 @@ function _fitnotes(r::PanelLocalProjection)
     end
     items = String[]
     for (l, nm) in enumerate(r.instruments)
-        h = hs(f -> f.status === :ok && !f.instkeep[l])
+        # an added lag beyond p(h) is not in the fit, not left out
+        h = hs(f -> f.status === :ok && r.instlag[l] <= f.nlags && !f.instkeep[l])
         isempty(h) && continue
         push!(items, h == estimated ? nm : "$nm (h = $(_hlist(h)))")
     end
