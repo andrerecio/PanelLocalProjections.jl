@@ -186,3 +186,28 @@ end
 function Base.show(io::IO, cv::PanelLPVcov)
     print(io, "PanelLPVcov: ", _label(cv.spec), ", horizons ", cv.horizons)
 end
+
+Tables.istable(::Type{FirstStageSummary}) = true
+Tables.columnaccess(::Type{FirstStageSummary}) = true
+function Tables.columns(s::FirstStageSummary)
+    (horizon = s.horizon, kpF = s.kpF, effF = s.effF, rk = s.rk, ninst = s.ninst,
+        nendo = s.nendo, nobs = s.nobs)
+end
+function Tables.columnnames(::FirstStageSummary)
+    (:horizon, :kpF, :effF, :rk, :ninst, :nendo, :nobs)
+end
+Tables.getcolumn(s::FirstStageSummary, nm::Symbol) = getproperty(Tables.columns(s), nm)
+Tables.getcolumn(s::FirstStageSummary, i::Int) = Tables.columns(s)[i]
+
+function Base.show(io::IO, ::MIME"text/plain", s::FirstStageSummary)
+    println(io, "First stage of the panel LP-IV; variance: $(s.spec)")
+    hdr = ["h", "KP rk Wald F", "effective F", "instruments", "endogenous", "nobs"]
+    rows = [[string(s.horizon[i]), _fmt(s.kpF[i]), _fmt(s.effF[i]), string(s.ninst[i]),
+                string(s.nendo[i]), string(s.nobs[i])] for i in eachindex(s.horizon)]
+    w = [maximum(length, [hdr[c]; [row[c] for row in rows]]) for c in eachindex(hdr)]
+    println(io, join(lpad.(hdr, w), "  "))
+    for (i, row) in enumerate(rows)
+        print(io, join(lpad.(row, w), "  "))
+        i < length(rows) && println(io)
+    end
+end

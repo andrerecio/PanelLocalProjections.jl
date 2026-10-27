@@ -16,7 +16,7 @@ function _empty_fit(d::PanelDesign, h::Int, mask::BitVector, singletons::Int;
         Tuple{Int, Int}[], Matrix{Float64}[], Symbol[])
     return HorizonFit(h, status, fill(NaN, K), keep, absorbed, fill(NaN, K, K),
         fill(NaN, K), mask, falses(d.ngroups[2]), dof, stats, iterations, converged,
-        active, nlags, SyntheticSeries[], instkeep)
+        active, nlags, SyntheticSeries[], instkeep, nothing)
 end
 
 """
@@ -68,6 +68,8 @@ function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
     # 2SLS: the fitted values of the (kept) endogenous columns replace them in the buffer
     en = Int[k for (k, j) in enumerate(cols) if j in d.endo && !xabs[k]]
     Xen = zeros(length(rows), 0)
+    fst = (; endo = Int[], inst = Int[], coef = zeros(0, 0), zz = zeros(0, 0),
+        yy = zeros(0, 0), U = zeros(0, 0))
     if L > 0 && !isempty(en)
         ex = Int[k for k in 1:nc if !xabs[k] && !(k in en)]
         zi = findall(.!absall[(nc + 1):end])
@@ -80,8 +82,10 @@ function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
             absorbed[cols] = xabs
             return (; β = Float64[], B = zeros(0, 0), keep, absorbed, resid = Float64[],
                 status = :underidentified, rows, Xk = view(A, :, 2:1), yt, fs,
-                xsd = fill(NaN, K), iterations = it, converged = conv, instkeep)
+                xsd = fill(NaN, K), iterations = it, converged = conv, instkeep, first = fst)
         end
+        fsr = _firststage_stats(view(A, :, 2:size(A, 2)), Q, rE, Xen, nc .+ zi[zk])
+        fst = (; endo = cols[en], inst = zcols[zi[zk]], fsr.coef, fsr.zz, fsr.yy, fsr.U)
         A[:, 1 .+ en] = Q * (Q' * Xen)
     end
     o = _ols(Xt, yt, raw, hasfe, d.intercept, shocks, added; absorbed = xabs)
@@ -106,7 +110,32 @@ function _within_fit(d::PanelDesign, y::Vector{Float64}, mask::BitVector,
     end
     return (; o.β, o.B, keep, absorbed, resid, o.status, rows,
         Xk = view(A, :, 2:(1 + length(kc))), yt, fs, xsd, iterations = it,
-        converged = conv, instkeep)
+        converged = conv, instkeep, first = fst)
+end
+
+"""
+    _firststage_stats(M, Q, rE, Xen, zc) -> NamedTuple
+
+The first stage of 2SLS for the diagnostics of `firststage`: the endogenous columns `Xen`
+and the instruments (columns `zc` of `M`), both net of the exogenous columns (the first
+`rE` columns of the basis `Q`), the coefficients Π̂ of the regressions of the former on the
+latter, the cross-products, and the scores z̃ v̂_k (k outer).
+"""
+function _firststage_stats(M::AbstractMatrix{Float64}, Q::Matrix{Float64}, rE::Int,
+        Xen::Matrix{Float64}, zc::Vector{Int})
+    QE = view(Q, :, 1:rE)
+    Z = M[:, zc]
+    Z .-= QE * (QE' * Z)
+    Y = Xen .- QE * (QE' * Xen)
+    zz = Z' * Z
+    coef = zz \ (Z' * Y)
+    V = Y .- Z * coef
+    L = size(Z, 2)
+    U = Matrix{Float64}(undef, size(Z, 1), L * size(Y, 2))
+    for k in axes(Y, 2)
+        view(U, :, ((k - 1) * L + 1):(k * L)) .= Z .* view(V, :, k)
+    end
+    return (; coef, zz, yy = Y' * Y, U)
 end
 
 """
@@ -253,8 +282,16 @@ function _fit_within(d::PanelDesign, h::Int, y::Vector{Float64}, mask::BitVector
     stats, present = _score_stats(U, w.keep, groups, d.ngroups)
     dof = _dofinfo(d, w.rows, w.fs, count(w.keep), present, singletons)
     coef, bread = _expand(w.β, w.B, w.keep)
+    fstage = nothing
+    if !isempty(w.first.endo)
+        m = length(w.first.endo)
+        fstats, _ = _score_stats(w.first.U, trues(size(w.first.U, 2)), groups, d.ngroups)
+        fstage = FirstStage(w.first.endo, w.first.inst, w.first.coef,
+            kron(Matrix{Float64}(LinearAlgebra.I, m, m), inv(w.first.zz)), fstats,
+            w.first.zz, w.first.yy)
+    end
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask, timepresent,
-        dof, stats, w.iterations, w.converged, active, nlags, synthetic, w.instkeep)
+        dof, stats, w.iterations, w.converged, active, nlags, synthetic, w.instkeep, fstage)
 end
 
 """
@@ -466,7 +503,7 @@ function _fit_horizon(est::SplitPanelJackknife, d::PanelDesign, h::Int,
     coef, bread = _expand(βspj, w.B, w.keep)
     return HorizonFit(h, :ok, coef, w.keep, w.absorbed, bread, w.xsd, mask,
         _present(groups[2], d.ngroups[2]), dof, stats, iterations, converged,
-        trues(length(w.keep)), 0, SyntheticSeries[], falses(0))
+        trues(length(w.keep)), 0, SyntheticSeries[], falses(0), nothing)
 end
 
 # ---------------------------------------------------------------------------------------

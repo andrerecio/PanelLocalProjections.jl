@@ -14,7 +14,8 @@ net install xtlp,    from("`gh'/shenshuuu/panel-local-projection-stata/cd3fa2468
 * panel LP-IV (Phase 6): ivreghdfe needs ivreg2 and ranktest (SSC, below)
 net install ivreghdfe, from("`gh'/sergiocorreia/ivreghdfe/bfb5577a6dbdfb029ab4ab6a7e93f7257a827b42/src/") replace
 
-foreach p in xtscc locproj xtspj xtarsim harreg ivreg2 ranktest xtivreg2 weakivtest {
+* weakivtest needs avar and distinct
+foreach p in xtscc locproj xtspj xtarsim harreg ivreg2 ranktest xtivreg2 weakivtest avar distinct {
     ssc install `p', replace
 }
 

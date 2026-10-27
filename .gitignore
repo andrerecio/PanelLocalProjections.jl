@@ -3,6 +3,9 @@ docs/paper/
 docs/references/
 docs/notes/
 starting_idea.md
+# Third-party replication packages and the datasets built from them (licensed or
+# confidential data, e.g. Compustat/CRSP via WRDS): never committed
+docs/data/
 
 # Julia
 Manifest*.toml

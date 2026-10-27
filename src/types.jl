@@ -424,6 +424,21 @@ struct SyntheticSeries
     Xraw::Matrix{Float64}
 end
 
+# First stage of a panel LP-IV fit (2SLS): the regressions of the endogenous columns on the
+# excluded instruments, both net of the fixed effects and the exogenous regressors (Π̂, L ×
+# m), with the sufficient statistics of its scores z̃_r v̂_rk (columns: k outer, the
+# instruments inner, as vec(Π̂)), from which `firststage` computes Var(vec Π̂) with any
+# variance specification.
+struct FirstStage
+    endo::Vector{Int}          # endogenous coefficients of the first stage
+    inst::Vector{Int}          # instruments in it (indices into the instruments)
+    coef::Matrix{Float64}      # Π̂, instruments × endogenous
+    bread::Matrix{Float64}     # I_m ⊗ (Z̃'Z̃)⁻¹
+    scores::ScoreStats
+    zz::Matrix{Float64}        # Z̃'Z̃
+    yy::Matrix{Float64}        # X̃'X̃ (endogenous columns, partialled)
+end
+
 struct HorizonFit
     h::Int
     # :ok; :empty (no observations); :singular (a shock is absorbed by the fixed effects or
@@ -452,6 +467,7 @@ struct HorizonFit
     # effects, nor collinear with the exogenous regressors or the other instruments); empty
     # without an IV block
     instkeep::BitVector
+    firststage::Union{Nothing, FirstStage}   # panel LP-IV fits with status :ok
 end
 
 struct PanelSummary
@@ -674,6 +690,29 @@ end
 # ---------------------------------------------------------------------------------------
 # Summaries (summary.jl)
 # ---------------------------------------------------------------------------------------
+
+"""
+    FirstStageSummary
+
+First-stage diagnostics of a panel LP-IV result ([`firststage`](@ref)), per horizon: the
+Kleibergen–Paap rk Wald F, the Montiel Olea–Pflueger effective F (one endogenous
+regressor), the first-stage coefficients of the instruments and their standard errors. A
+Tables.jl table of the per-horizon statistics.
+"""
+struct FirstStageSummary
+    spec::String
+    horizon::Vector{Int}
+    kpF::Vector{Float64}
+    effF::Vector{Float64}
+    rk::Vector{Float64}          # Kleibergen–Paap rk Wald statistic, χ²(L − m + 1)
+    ninst::Vector{Int}
+    nendo::Vector{Int}
+    nobs::Vector{Int}
+    endogenous::Vector{Vector{String}}
+    instruments::Vector{Vector{String}}
+    coef::Vector{Matrix{Float64}}
+    se::Vector{Matrix{Float64}}
+end
 
 """
     IRFSummary

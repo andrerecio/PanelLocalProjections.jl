@@ -36,6 +36,7 @@ export WithinFE, SplitPanelJackknife, CDOLS, AlternatingProjections, OneSweep
 export LagAugmented, ICLags, CappedLags, ConstantLags, LagSelection
 export Robust, Clustered, DriscollKraaySE, TLAHR, CosineHAR
 export summarize, coefpath, nobspath, horizons, esample, lagorder, synthetic
+export firststage, FirstStageSummary
 export coef, coefnames, vcov, stderror, nobs
 export irfplot, irfplot!
 

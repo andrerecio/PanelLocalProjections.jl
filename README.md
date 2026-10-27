@@ -10,10 +10,10 @@ procedures of the recent panel-LP literature in one place:
 | Split-panel jackknife (SPJ) correction of the Nickell bias of the FE estimator | Mei, Sheng & Shi (2026, *JIE*) | v0.1 |
 | Cumulative-difference OLS (CD-OLS), which avoids the within transformation | Ugarte-Ruiz (2026, BBVA Research) | v0.1 |
 | t-LAHR inference for aggregate (macro) shocks: time-clustered, lag-augmented, heteroskedasticity-robust, with an HC2 + Imbens–Kolesár refinement | Almuzara & Sancibrián (2026) | v0.1 |
-| Panel LP-IV | Almuzara & Sancibrián (2026, §3); Cloyne et al. (2023) | planned (v0.2) |
+| Panel LP-IV (2SLS, with lag augmentation and t-LAHR), with Kleibergen–Paap and Montiel Olea–Pflueger first-stage diagnostics | Almuzara & Sancibrián (2026, §3.4); Kleibergen & Paap (2006); Montiel Olea & Pflueger (2013) | v0.2 |
 
-Version 0.1.0. What comes after it (panel LP-IV, joint bands across horizons, the
-firm-level replications) is listed in [`TODO.md`](TODO.md). The documentation covers the
+Version 0.2.0. What comes after it (joint bands across horizons, weak-IV-robust
+inference, negative horizons) is listed in [`TODO.md`](TODO.md). The documentation covers the
 methods, the conventions of each reference implementation and how `panellp` reproduces
 them, the cross-checks, and audits of the reference code.
 

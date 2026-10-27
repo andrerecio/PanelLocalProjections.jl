@@ -38,6 +38,7 @@ Added from Phase 1 on. Columns: tool | version/SHA | licence | input | generatin
 | `stata/p6_lpiv.csv` | Stata 19.5 BE: ivreghdfe 1.1.4, ivreg2 4.1.12, ranktest 2.0.04, xtivreg2 1.0.17 | ivreghdfe `bfb5577` (see `crosscheck/VERSIONS.md`) | ivreghdfe MIT; ivreg2, ranktest, xtivreg2 SSC (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/stata/p6_lpiv.do` |
 | `stata/p6b_lpiv_la.csv` | Stata 19.5 BE: ivreghdfe 1.1.4 (lag-augmented LP-IV) | ivreghdfe `bfb5577` | ivreghdfe MIT; ivreg2 SSC (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/stata/p6b_lpiv_la.do` |
 | `r/p6b_fixest_la.csv` | R 4.5.3, fixest 0.14.0 (lag-augmented LP-IV) | CRAN | fixest GPL-3 (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/R/p6b_fixest_la.R` |
+| `stata/p6c_firststage.csv` | Stata 19.5 BE: ivreghdfe 1.1.4 (`e(widstat)`), weakivtest (`r(F_eff)`; needs avar, distinct) | ivreghdfe `bfb5577`; SSC (see `crosscheck/VERSIONS.md`) | ivreghdfe MIT; weakivtest, avar, distinct SSC (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/stata/p6c_firststage.do` |
 | `r/p6_fixest.csv` | R 4.5.3, fixest 0.14.0 | CRAN | fixest GPL-3 (output only) | `fx_lpiv`, `fx_lpiv_unbal` | `crosscheck/R/p6_fixest.R` |
 | `r/p1p2_mss_lppanel.csv` | R 4.5.3, Mei–Sheng–Shi `LP_panel` (`LP_panel_all.r`) | metricshilab/panel-lp-replication `882b046` | MIT | `fx_balanced`, `fx_unbalanced`, `fx_balanced` units 1–4 | `crosscheck/R/p1p2_mss_lppanel.R` |
 

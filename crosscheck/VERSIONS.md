@@ -27,6 +27,8 @@ installed by `crosscheck/stata/setup_stata.do`.
 | ranktest | 2.0.04 (21sept2020) | SSC | 20200929 (Phase 6) |
 | xtivreg2 | 1.0.17 (19Feb2015) | SSC | 20200626 (Phase 6) |
 | weakivtest | (no header) | SSC | 20260722 (Phase 6) |
+| avar | 1.0.07 (28jul2015; a weakivtest dependency) | SSC | 20150730 (Phase 6c) |
+| distinct | 1.2.1 (1mar2012; a weakivtest dependency) | SSC | 20120321 (Phase 6c) |
 
 SSC packages cannot be pinned. A failed `ado_manifest.py --check` means an upstream
 change: rerun the cross-checks, review the diff of the committed outputs, then

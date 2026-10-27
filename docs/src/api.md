@@ -41,6 +41,8 @@ CosineHAR
 vcov(::PanelLocalProjections.PanelVcov, ::PanelLocalProjection)
 PanelLPVcov
 stderror(::PanelLPVcov)
+firststage
+FirstStageSummary
 ```
 
 ## Results

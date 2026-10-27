@@ -1,6 +1,43 @@
 # Changelog
 
-## Unreleased (v0.2: panel LP-IV)
+## 0.2.0 (2026-10-26): panel LP-IV
+
+### Phase 6c: first-stage diagnostics, public example, docs
+- `firststage(r; vcov = TLAHR(refine = false))` reports, per horizon, with any variance
+  specification:
+  - the Kleibergen–Paap (2006) rk Wald F, computed from the SVD of the normalised first
+    stage, for one or several endogenous regressors;
+  - the Montiel Olea–Pflueger (2013) effective F, for one endogenous regressor;
+  - the first-stage coefficients and standard errors.
+
+  The small-sample factor uses the first stage's degrees of freedom. The result is a
+  Tables.jl `FirstStageSummary`. It reproduces ivreghdfe's `widstat` (just- and
+  over-identified, one and three endogenous regressors, robust, one- and two-way clusters,
+  Driscoll–Kraay) to 7e-11, and weakivtest's `F_eff` to 4e-14.
+- New pinned Stata packages for the cross-checks: avar and distinct (needed by weakivtest).
+- Review fixes:
+  - the KP statistic uses the trailing singular vectors directly, an equivalent form of
+    KP's eq. (12) that needs no inversion, so tied singular values (group dummies × an
+    aggregate) no longer throw;
+  - an indefinite two-way variance gives NaN with a warning, never a negative statistic.
+    `psd` does not apply, as in ivreg2;
+  - the first-stage scores are filled into one preallocated matrix.
+
+  New Stata cases: m = 2 with L = 3, and a diagonal Π̂.
+- Public-data example (`examples/us_states/`, docs "Examples"). A US state panel:
+  - personal income (BEA);
+  - exposure: the manufacturing share;
+  - endogenous: the change in the 1-year rate (FRED GS1) × exposure;
+  - instrument: the Jarociński–Karadi surprises × exposure.
+
+  It shows that the first stage is weak clustered by period (KP F ≈ 2) and strong robust
+  (≈ 35) or clustered by state (≈ 2·10⁵). It also shows the reduced form with refined
+  t-LAHR. The scripts download and build the data into the gitignored `docs/data/`.
+- Docs: `methods/lpiv.md`; the firm-level page maps CFFS23 and JL24 IV to `panellp` calls,
+  cites the OW20 Econometrica replication package and marks the three studies as
+  requiring WRDS.
+- `.gitignore`: `docs/data/` (third-party replication packages and data built from them).
+- Version 0.2.0.
 
 ### Phase 6b: lag augmentation and t-LAHR for panel LP-IV
 - `LagAugmented` with an IV block (Almuzara & Sancibrián 2026, §3.4): at horizon h, p(h)

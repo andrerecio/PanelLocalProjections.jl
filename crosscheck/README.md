@@ -211,3 +211,25 @@ Same panels and test file. At horizon h, p = min(h, 2) lags of y (exogenous) and
 
 `ICLags` on IV fits equals the criterion of the OLS reduced form (the instruments as the
 shocks), tested in `test/test_lpiv.jl`.
+
+### Phase 6c: first-stage diagnostics
+
+`firststage(r; vcov)` against ivreghdfe's `e(widstat)` (Kleibergen–Paap rk Wald F) and
+weakivtest's `r(F_eff)` (Montiel Olea–Pflueger effective F). These are the just-identified
+rows of `p6_lpiv.csv` (one and three endogenous regressors) and the over-identified ones of
+`p6c_firststage.csv` (`s & mp + sv & mp`). Their small-sample factor counts the first
+stage's regressors: the exogenous ones plus the excluded instruments, which is
+`firststage`'s own count. With a fixed effect nested in the cluster, ivreghdfe's df′ is
+max(df_a − its levels, 1).
+
+| Reference command | `firststage` vcov | Agreement |
+|---|---|---|
+| `ivreghdfe …, absorb(id t) robust`, `e(widstat)` | `Robust()` | 2e-11 |
+| `ivreghdfe …, absorb(id t) cluster(id \| t)` | `Clustered(:unit \| :time; ssc = :none)` ÷ ivreghdfe's nested factor | 7e-11 |
+| `ivreghdfe …, absorb(id t) cluster(id t)` / `dkraay(3)` | `Clustered(:unit, :time; psd = false)` / `DriscollKraaySE(2)` | 3e-11 |
+| `ivreghdfe …, absorb(id) cluster(t)`, three endogenous regressors | `Clustered(:time)` | 2e-15 |
+| `xtivreg2 …, fe cluster(id)` | `Clustered(:unit; ssc = :none)` ÷ (N−1)/(N−K)·G/(G−1) | 2e-14 |
+| `xtivreg2 …, fe robust small` | `Robust()` | 1e-15 |
+| `ivreghdfe …, absorb(id) cluster(id) \| robust`, then `weakivtest`: `r(F_eff)` | `Clustered(:unit; ssc = :none)` ÷ nested factor / `Robust()`, `effF` | 4e-14 |
+| two endogenous regressors, three instruments (`sffr svffr = smp svmp wmp`): robust, `cluster(t)`, `absorb(id) cluster(id)` | as above | 2e-11 |
+| `ivreghdfe Fy (g1ffr g2ffr g3ffr = g1mp g2mp g3mp), absorb(id) robust` (diagonal Π̂, tied singular values) | `Robust()` | 4e-15 |

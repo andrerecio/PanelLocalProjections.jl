@@ -168,13 +168,45 @@ structural residual. Every existing variance then applies unchanged, and `TLAHR(
   killed.
 - [ ] Phase 6b gate; commit
 
-### 6c: diagnostics, docs, release
-- [ ] `firststage(r; vcov)`: first-stage coefficients, the Kleibergen–Paap rk Wald F with the chosen variance,
-  and the Montiel Olea–Pflueger effective F (one endogenous column); cross-checks against `ivreg2`'s `widstat`
-  and `weakivtest`
-- [ ] Docs: `methods/lpiv.md`; CFFS23 / JL24 IV mappings in `replication/firm_level_wip.md`;
-  Jordà–Schularick–Taylor trilemma (if the data are public)
-- [ ] v0.2.0
+### 6c: diagnostics, public example, docs, release
+- [x] `firststage(r; vcov)` per horizon:
+  - the first-stage coefficients and standard errors;
+  - the Kleibergen–Paap rk Wald F (KP 2006 SVD, several endogenous regressors);
+  - the Montiel Olea–Pflueger effective F (one endogenous regressor).
+
+  Small-sample factor from the first stage's dof. Cross-checks: ivreghdfe `widstat` (`p6_lpiv.csv`,
+  `p6c_firststage.do`) to 7e-11 and weakivtest `F_eff` to 4e-14; avar and distinct pinned.
+- [x] Public example in A&S's setting (§3.4), our own download-and-build code (`examples/us_states/`). The data
+  stay in the gitignored `docs/data/`. US states, quarterly, 1999–2019:
+  - outcome: personal income (BEA SQINC1);
+  - exposure: the 1998 manufacturing share;
+  - endogenous: s × ΔGS1;
+  - instrument: s × Jarociński–Karadi `MP_pm`.
+
+  Findings:
+  - the first stage is weak clustered by period (KP F ≈ 2), strong robust (≈ 35) and clustered by state (≈ 2·10⁵);
+  - t-LAHR SEs are 1.5–2.7× the state-clustered ones;
+  - the reduced form is shown with refined t-LAHR (IK df ≈ 6: a lumpy surprise series).
+
+  The user chose to show the weak IV together with the reduced form.
+- [x] Docs:
+  - `methods/lpiv.md` and `examples/us_states.md`;
+  - `replication/firm_level_wip.md`: CFFS23 and JL24 IV mapped to `panellp` calls (run on synthetic panels of
+    the same shape), the OW20 Econometrica replication package cited, the three studies marked "requires WRDS".
+- [x] `.gitignore` gains `docs/data/`
+- [x] v0.2.0
+- [x] Adversarial review (2 lenses: code and econometrics with 19 mutations; example and docs claims). Fixed:
+  - `_kprk` threw on tied singular values; it is now inversion-free (KP eq. 12 up to a nonsingular transform);
+  - an indefinite two-way V gave a negative rk; it now gives NaN with a warning;
+  - the first-stage scores were built twice;
+  - the example page overstated the SE ratio (now 1.5–2.7) and the leverage claim (now the shock coefficient's
+    influence weights), and listed numbers the script did not compute (`estimate.jl` now prints them all);
+  - the VERSIONS row lacked versions;
+  - Datastream and WorldScope are LSEG, not WRDS.
+
+  New Stata cases: m = 2, L = 3, and a diagonal Π̂. The panel construction was verified independently (9e-16).
+  Non-IV and IV fits are bit-identical to 6b.
+- [x] Phase 6c gate; commit
 
 ## After v0.1
 - [ ] Adversarial review of the Phase 4 review fixes and of the Phase 5 memory changes (deferred; started twice, stopped for time). Scope:
@@ -183,6 +215,9 @@ structural residual. Every existing variance then applies unchanged, and `TLAHR(
   - tests and docs: mutation tests of the fixes, and every number changed in `methods/tlahr.md` and `audit/as_code.md`.
 
   Re-run the first review's reproductions and fuzzers on the current code. Fix the confirmed findings in a follow-up commit.
+- Weak-IV-robust inference for panel LP-IV: Anderson–Rubin tests and bands per horizon with the chosen variance
+  (the US state example motivates it)
 - Joint (sup-t) bands across horizons, built on the stored group score sums
 - Negative horizons (pre-trends), lagged-FE interactions, a `panelshift` helper
-- Firm-level replications (OW20, CFFS23, JL24) with user-supplied Compustat data
+- Firm-level replications (OW20, CFFS23, JL24) with user-supplied Compustat data (requires WRDS; the user has no
+  access, so these stay mappings)

@@ -482,3 +482,105 @@ function _fingerprint(r::PanelLocalProjection)
     end
     return h
 end
+
+"""
+    firststage(r; vcov = TLAHR(refine = false)) -> FirstStageSummary
+
+First-stage diagnostics of a panel LP-IV result, per horizon, with the variance
+specification `vcov` (any of [`Robust`](@ref), [`Clustered`](@ref),
+[`DriscollKraaySE`](@ref), [`CosineHAR`](@ref), `TLAHR(refine = false)`) applied to the
+first-stage scores, with its small-sample factor computed from the first stage's degrees
+of freedom (its regressors: the exogenous ones and the excluded instruments), as ivreg2,
+ivreghdfe and weakivtest do:
+
+- `kpF`: the Kleibergen–Paap (2006) rk Wald F for weak identification, rk/L, with rk the
+  Wald statistic of the test that Π (instruments × endogenous, net of the fixed effects and
+  the exogenous regressors) has rank m − 1, from the singular value decomposition of
+  Θ̂ = G Π̂ F′, G'G = Z̃'Z̃/n, F'F = (X̃'X̃/n)⁻¹ (their eqs. 11–14). With one endogenous
+  regressor it is the Wald F of Π = 0. ivreg2's `widstat`.
+- `effF` (one endogenous regressor): the Montiel Olea & Pflueger (2013) effective F,
+  π̂'Z̃'Z̃π̂ / tr(V̂(π̂) Z̃'Z̃); equal to `kpF` with one instrument.
+- `coef`, `se`: the first-stage coefficients of the instruments and their standard errors
+  (instruments × endogenous) per horizon.
+
+Two-way clustered variances are not repaired (`psd` is ignored, as in ivreg2): where the
+variance that a statistic needs is not positive definite, the statistic is NaN, with a
+warning.
+"""
+function firststage(r::PanelLocalProjection; vcov::PanelVcov = TLAHR(refine = false))
+    isempty(r.endogenous) &&
+        throw(ArgumentError("firststage needs a panel LP-IV result (an (endo ~ inst) block)"))
+    ctx = _prepare(vcov, r)
+    H = length(r.fits)
+    kpF, effF, rk = fill(NaN, H), fill(NaN, H), fill(NaN, H)
+    ninst, nendo, nobs = zeros(Int, H), zeros(Int, H), zeros(Int, H)
+    endos, insts = [String[] for _ in 1:H], [String[] for _ in 1:H]
+    coefs, ses = [zeros(0, 0) for _ in 1:H], [zeros(0, 0) for _ in 1:H]
+    undefined = Int[]
+    for (k, fit) in enumerate(r.fits)
+        nobs[k] = fit.dof.nobs
+        fs = fit.firststage
+        (fit.status === :ok && fs !== nothing) || continue
+        L, m = size(fs.coef)
+        ninst[k], nendo[k] = L, m
+        endos[k] = r.coefnames[fs.endo]
+        insts[k] = r.instruments[fs.inst]
+        coefs[k] = fs.coef
+        Lm = L * m
+        # the first stage's regressors: the structural ones less the endogenous, plus the
+        # excluded instruments
+        dv = fit.dof
+        dof = DofInfo(dv.nobs, dv.k - m + L, dv.df_a, dv.felevels, dv.fecomponents,
+            dv.ngroups, dv.nested, dv.singletons)
+        pfit = HorizonFit(fit.h, :ok, vec(fs.coef), trues(Lm), falses(Lm), fs.bread,
+            ones(Lm), fit.esample, fit.timepresent, dof, fs.scores, fit.iterations,
+            fit.converged, trues(Lm), fit.nlags, SyntheticSeries[], falses(0), nothing)
+        V, _, _, flag = _sandwich(vcov, r, pfit, ctx, collect(1:Lm))
+        if flag === :undefined || flag === :bandwidth || !all(isfinite, V)
+            push!(undefined, fit.h)
+            continue
+        end
+        ses[k] = reshape([v >= 0 ? sqrt(v) : NaN for v in LinearAlgebra.diag(V)], L, m)
+        rk[k] = _kprk(fs, V, fit.dof.nobs)
+        isnan(rk[k]) && push!(undefined, fit.h)
+        kpF[k] = rk[k] / L
+        if m == 1
+            π = vec(fs.coef)
+            den = LinearAlgebra.tr(V * fs.zz)
+            effF[k] = den > 0 ? (π' * fs.zz * π) / den : NaN
+        end
+    end
+    isempty(undefined) || @warn "firststage: $(_label(vcov)) is undefined, or the " *
+          "variance of the first stage is not positive definite, at " *
+          "h = $(_hlist(sort!(unique(undefined)))); the statistics are NaN there"
+    return FirstStageSummary(_label(vcov), collect(r.horizons), kpF, effF, rk, ninst,
+        nendo, nobs, endos, insts, coefs, ses)
+end
+
+# Kleibergen–Paap (2006) rk Wald statistic of the test that Π (L × m) has rank m − 1, with
+# V = Var(vec Π̂): Θ̂ = L_z' Π̂ L_y⁻ᵀ (L_z L_z' = Z̃'Z̃/n, L_y L_y' = X̃'X̃/n), Θ̂ = U S V' (full
+# SVD), q = m − 1; λ = (B ⊗ A') vec Θ̂ and rk = λ' [(B ⊗ A') V_Θ (B ⊗ A')']⁻¹ λ, with
+# V_Θ = (L_y⁻¹ ⊗ L_z') V (L_y⁻¹ ⊗ L_z')'. KP's eq. (12) takes A = U₂ U₂₂⁻¹(U₂₂U₂₂')^{1/2}
+# and B = (V₂₂V₂₂')^{1/2} V₂₂'⁻¹ V₂' (U₂, V₂ the trailing singular vectors): nonsingular
+# transformations of U₂ and V₂, which leave the Wald statistic unchanged. With A = U₂ and
+# B = V₂' there is nothing to invert, also when U₂₂ or V₂₂ is singular (tied singular
+# values, e.g. group dummies × an aggregate with a diagonal Π̂).
+function _kprk(fs::FirstStage, V::Matrix{Float64}, n::Int)
+    L, m = size(fs.coef)
+    Lz = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(fs.zz ./ n)).L
+    Ly = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(fs.yy ./ n)).L
+    iLy = inv(Ly)
+    Θ = Lz' * fs.coef * iLy'
+    F = LinearAlgebra.svd(Θ; full = true)
+    A = F.U[:, m:L]                  # trailing left singular vectors (q + 1 = m onward)
+    B = F.V[:, m:m]'                 # the last right singular vector
+    T = kron(iLy, Lz')
+    K = kron(B, A')
+    λ = K * vec(Θ)
+    Vλ = LinearAlgebra.Symmetric(K * (T * V * T') * K')
+    # the Wald statistic needs Var(λ̂) positive definite; an indefinite one (two-way
+    # clustering is not repaired) gives NaN, never a negative statistic
+    ev = LinearAlgebra.eigvals(Vλ)
+    first(ev) > 1e-12 * max(last(ev), 0.0) || return NaN
+    return only(λ' * (Vλ \ λ))
+end

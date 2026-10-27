@@ -416,3 +416,72 @@ end
         @test coef(ra, h) ≈ coef(rb, h) rtol = 1e-10
     end
 end
+
+@testitem "firststage: KP and effective F equal their formulas" tags = [:core, :lpiv] setup = [PLPSupport, LSDV] begin
+    using .PLPSupport: fixture
+    using LinearAlgebra, Logging, StatsModels, Tables
+    const PLP = PanelLocalProjections
+    d = fixture(:fx_lpiv_unbal)
+    p = PLP.PanelIndex(d.id, d.t)
+    kw = (; id = :id, time = :t, horizon = 0:3)
+    # over-identified: two instruments for one endogenous regressor
+    r = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp + sv & mp) + w + fe(id) + fe(t)), d; kw...)
+    fs = firststage(r; vcov = Clustered(:time; ssc = :none))
+    @test fs.ninst == fill(2, 4) && fs.nendo == fill(1, 4) && fs.nobs == nobspath(r)
+    @test fs.endogenous[1] == ["s & ffr"] && fs.instruments[1] == ["s & mp", "sv & mp"]
+    for h in 0:3
+        fit = r.fits[h + 1]
+        rows, M, _ = LSDV.within(r, fit, [d.id, d.t])
+        Xe = M(reshape(Float64.(d.w), :, 1)[rows, :])
+        P(A) = A - Xe * (Xe \ A)
+        Z = P(M(hcat(d.s .* d.mp, d.sv .* d.mp)[rows, :]))
+        x = P(M(reshape(d.s .* d.ffr, :, 1)[rows, :]))
+        π = Z \ x
+        U = Z .* (x - Z * π)
+        B = inv(Z' * Z)
+        V = B * LSDV.meat(U, d.t[rows]) * B
+        @test fs.coef[h + 1] ≈ π rtol = 1e-10
+        @test fs.se[h + 1] ≈ sqrt.(diag(V)) rtol = 1e-9
+        @test fs.kpF[h + 1] ≈ only(π' * (V \ π)) / 2 rtol = 1e-9
+        @test fs.effF[h + 1] ≈ only(π' * (Z' * Z) * π) / tr(V * (Z' * Z)) rtol = 1e-9
+    end
+    # with one instrument both are the Wald F of the first stage
+    r1 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)), d; kw...)
+    f1 = firststage(r1; vcov = Robust())
+    @test f1.effF ≈ f1.kpF rtol = 1e-12
+    # the default is t-LAHR's CR0 by period (A&S supplement A.4)
+    @test firststage(r1).kpF ≈ firststage(r1; vcov = Clustered(:time; ssc = :none)).kpF
+    # a Tables.jl table; shown per horizon
+    @test Tables.columnnames(Tables.columns(f1)) == (:horizon, :kpF, :effF, :rk, :ninst, :nendo, :nobs)
+    @test occursin("KP rk Wald F", sprint(show, MIME"text/plain"(), f1))
+    # lag augmentation: the instrument lags of p(h) enter the first stage
+    rl = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)), d; kw...,
+        estimator = LagAugmented(CappedLags(2)))
+    fl = firststage(rl)
+    @test fl.ninst == [1, 2, 3, 3] && fl.nendo == [1, 2, 3, 3] && all(isnan, fl.effF[2:end])
+    @test all(isfinite, fl.kpF)
+    # errors and undefined horizons
+    rols = panellp(@formula(leads(y) ~ s & ffr + w + fe(id)), d; kw..., shock = "s & ffr")
+    @test_throws ArgumentError firststage(rols)
+    @test_throws ArgumentError firststage(r1; vcov = TLAHR())
+    d0 = fixture(:fx_lpiv)
+    z = d0.mp .+ ifelse.(d0.t .>= 49, d0.s .* d0.mp, 0.0)
+    ru = Logging.with_logger(Logging.NullLogger()) do
+        panellp(@formula(leads(y) ~ (s & ffr ~ z) + w + fe(id) + fe(t)), merge(d0, (; z));
+            id = :id, time = :t, horizon = 0:3)
+    end
+    fu = firststage(ru)
+    @test isfinite(fu.kpF[1]) && all(isnan, fu.kpF[3:4]) && fu.ninst[3] == 0
+    # an indefinite two-way variance (few units and periods) gives NaN with a warning, never
+    # a negative statistic; there is no PSD repair, so `psd` does not matter
+    sub = [i for i in eachindex(d0.id) if d0.id[i] <= 5 && d0.t[i] <= 8]
+    small = map(c -> c[sub], d0)
+    rs = Logging.with_logger(Logging.NullLogger()) do
+        panellp(@formula(leads(y) ~ (s & ffr ~ s & mp + sv & mp + w & mp) + w + fe(id) + fe(t)), small;
+            id = :id, time = :t, horizon = 0:2)
+    end
+    fa = @test_logs (:warn, r"not positive definite") firststage(rs; vcov = Clustered(:unit, :time; psd = false))
+    fb = Logging.with_logger(() -> firststage(rs; vcov = Clustered(:unit, :time)), Logging.NullLogger())
+    @test all(isnan, fa.rk) && isequal(fa.kpF, fb.kpF)
+    @test all(x -> isnan(x) || x >= 0, firststage(rs; vcov = Robust()).rk)
+end
