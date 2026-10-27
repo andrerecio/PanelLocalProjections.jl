@@ -1,0 +1,617 @@
+dataset,spec,h,term,b,se,nobs
+fx_balanced,fixest_fe_cl_id_none,0,x,-0.5867210872795986,0.024418172739032348,1770
+fx_balanced,fixest_fe_cl_id_none,0,"l(x, 1)",0.12788052996747148,0.035607832051763565,1770
+fx_balanced,fixest_fe_cl_id_none,0,"l(y, 1)",0.66048363405501254,0.020986690677316847,1770
+fx_balanced,fixest_fe_cl_id_none,0,w,0.25917037572296053,0.034051825055213501,1770
+fx_balanced,fixest_fe_hetero_none,0,x,-0.5867210872795986,0.03767389839201845,1770
+fx_balanced,fixest_fe_hetero_none,0,"l(x, 1)",0.12788052996747148,0.040280086858841595,1770
+fx_balanced,fixest_fe_hetero_none,0,"l(y, 1)",0.66048363405501254,0.017889935993031264,1770
+fx_balanced,fixest_fe_hetero_none,0,w,0.25917037572296053,0.034719115568386048,1770
+fx_balanced,fixest_tfe_cl_id_none,0,x,-0.56377208316357463,0.027097049646845617,1770
+fx_balanced,fixest_tfe_cl_id_none,0,"l(x, 1)",0.089420454735900393,0.038939698389014982,1770
+fx_balanced,fixest_tfe_cl_id_none,0,"l(y, 1)",0.64517740919385003,0.019949648956383948,1770
+fx_balanced,fixest_tfe_cl_id_none,0,w,0.27545745531938126,0.027850003321829207,1770
+fx_balanced,fixest_tfe_twoway_none,0,x,-0.56377208316357463,0.024860941837265595,1770
+fx_balanced,fixest_tfe_twoway_none,0,"l(x, 1)",0.089420454735900393,0.047716269613971636,1770
+fx_balanced,fixest_tfe_twoway_none,0,"l(y, 1)",0.64517740919385003,0.040294463883021499,1770
+fx_balanced,fixest_tfe_twoway_none,0,w,0.27545745531938126,0.028539520110043709,1770
+fx_balanced,fixest_tfe_cl_id_default,0,x,-0.56377208316357463,0.028056325494176169,1770
+fx_balanced,fixest_tfe_cl_id_default,0,"l(x, 1)",0.089420454735900393,0.04031822161031582,1770
+fx_balanced,fixest_tfe_cl_id_default,0,"l(y, 1)",0.64517740919385003,0.020655896192005412,1770
+fx_balanced,fixest_tfe_cl_id_default,0,w,0.27545745531938126,0.028835934848799576,1770
+fx_balanced,fixest_fe_cl_id_none_keepsing,0,x,-0.5867210872795986,0.024418172739032348,1770
+fx_balanced,fixest_fe_cl_id_none_keepsing,0,"l(x, 1)",0.12788052996747148,0.035607832051763565,1770
+fx_balanced,fixest_fe_cl_id_none_keepsing,0,"l(y, 1)",0.66048363405501254,0.020986690677316847,1770
+fx_balanced,fixest_fe_cl_id_none_keepsing,0,w,0.25917037572296053,0.034051825055213501,1770
+fx_balanced,fixest_fe_hetero_none_keepsing,0,x,-0.5867210872795986,0.03767389839201845,1770
+fx_balanced,fixest_fe_hetero_none_keepsing,0,"l(x, 1)",0.12788052996747148,0.040280086858841595,1770
+fx_balanced,fixest_fe_hetero_none_keepsing,0,"l(y, 1)",0.66048363405501254,0.017889935993031264,1770
+fx_balanced,fixest_fe_hetero_none_keepsing,0,w,0.25917037572296053,0.034719115568386048,1770
+fx_balanced,fixest_tfe_cl_id_none_keepsing,0,x,-0.56377208316357463,0.027097049646845617,1770
+fx_balanced,fixest_tfe_cl_id_none_keepsing,0,"l(x, 1)",0.089420454735900393,0.038939698389014982,1770
+fx_balanced,fixest_tfe_cl_id_none_keepsing,0,"l(y, 1)",0.64517740919385003,0.019949648956383948,1770
+fx_balanced,fixest_tfe_cl_id_none_keepsing,0,w,0.27545745531938126,0.027850003321829207,1770
+fx_balanced,fixest_tfe_twoway_none_keepsing,0,x,-0.56377208316357463,0.024860941837265595,1770
+fx_balanced,fixest_tfe_twoway_none_keepsing,0,"l(x, 1)",0.089420454735900393,0.047716269613971636,1770
+fx_balanced,fixest_tfe_twoway_none_keepsing,0,"l(y, 1)",0.64517740919385003,0.040294463883021499,1770
+fx_balanced,fixest_tfe_twoway_none_keepsing,0,w,0.27545745531938126,0.028539520110043709,1770
+fx_balanced,fixest_tfe_cl_id_default_keepsing,0,x,-0.56377208316357463,0.028056325494176169,1770
+fx_balanced,fixest_tfe_cl_id_default_keepsing,0,"l(x, 1)",0.089420454735900393,0.04031822161031582,1770
+fx_balanced,fixest_tfe_cl_id_default_keepsing,0,"l(y, 1)",0.64517740919385003,0.020655896192005412,1770
+fx_balanced,fixest_tfe_cl_id_default_keepsing,0,w,0.27545745531938126,0.028835934848799576,1770
+fx_balanced,fixest_fe_cl_id_none,1,x,-0.57739640710137041,0.042031120980194084,1740
+fx_balanced,fixest_fe_cl_id_none,1,"l(x, 1)",0.10580135198088084,0.053529918810320438,1740
+fx_balanced,fixest_fe_cl_id_none,1,"l(y, 1)",0.40728353207504459,0.02725471984838139,1740
+fx_balanced,fixest_fe_cl_id_none,1,w,0.27475738080341255,0.05678355372152686,1740
+fx_balanced,fixest_fe_hetero_none,1,x,-0.57739640710137041,0.049341383007229928,1740
+fx_balanced,fixest_fe_hetero_none,1,"l(x, 1)",0.10580135198088084,0.053038706915720532,1740
+fx_balanced,fixest_fe_hetero_none,1,"l(y, 1)",0.40728353207504459,0.02514677229767415,1740
+fx_balanced,fixest_fe_hetero_none,1,w,0.27475738080341255,0.043421068769828562,1740
+fx_balanced,fixest_tfe_cl_id_none,1,x,-0.57042786854001204,0.041771152650821319,1740
+fx_balanced,fixest_tfe_cl_id_none,1,"l(x, 1)",0.063366101735477673,0.054398040693987369,1740
+fx_balanced,fixest_tfe_cl_id_none,1,"l(y, 1)",0.39369139150336346,0.023740185093990524,1740
+fx_balanced,fixest_tfe_cl_id_none,1,w,0.29093614186876965,0.048652866085422637,1740
+fx_balanced,fixest_tfe_twoway_none,1,x,-0.57042786854001204,0.039096776882007293,1740
+fx_balanced,fixest_tfe_twoway_none,1,"l(x, 1)",0.063366101735477673,0.078750158922915439,1740
+fx_balanced,fixest_tfe_twoway_none,1,"l(y, 1)",0.39369139150336346,0.061648039103643359,1740
+fx_balanced,fixest_tfe_twoway_none,1,w,0.29093614186876965,0.052211123546620809,1740
+fx_balanced,fixest_tfe_cl_id_default,1,x,-0.57042786854001204,0.04325057650192838,1740
+fx_balanced,fixest_tfe_cl_id_default,1,"l(x, 1)",0.063366101735477673,0.056324675554387735,1740
+fx_balanced,fixest_tfe_cl_id_default,1,"l(y, 1)",0.39369139150336346,0.024580999719130039,1740
+fx_balanced,fixest_tfe_cl_id_default,1,w,0.29093614186876965,0.050376022042194553,1740
+fx_balanced,fixest_fe_cl_id_none_keepsing,1,x,-0.57739640710137041,0.042031120980194084,1740
+fx_balanced,fixest_fe_cl_id_none_keepsing,1,"l(x, 1)",0.10580135198088084,0.053529918810320438,1740
+fx_balanced,fixest_fe_cl_id_none_keepsing,1,"l(y, 1)",0.40728353207504459,0.02725471984838139,1740
+fx_balanced,fixest_fe_cl_id_none_keepsing,1,w,0.27475738080341255,0.05678355372152686,1740
+fx_balanced,fixest_fe_hetero_none_keepsing,1,x,-0.57739640710137041,0.049341383007229928,1740
+fx_balanced,fixest_fe_hetero_none_keepsing,1,"l(x, 1)",0.10580135198088084,0.053038706915720532,1740
+fx_balanced,fixest_fe_hetero_none_keepsing,1,"l(y, 1)",0.40728353207504459,0.02514677229767415,1740
+fx_balanced,fixest_fe_hetero_none_keepsing,1,w,0.27475738080341255,0.043421068769828562,1740
+fx_balanced,fixest_tfe_cl_id_none_keepsing,1,x,-0.57042786854001204,0.041771152650821319,1740
+fx_balanced,fixest_tfe_cl_id_none_keepsing,1,"l(x, 1)",0.063366101735477673,0.054398040693987369,1740
+fx_balanced,fixest_tfe_cl_id_none_keepsing,1,"l(y, 1)",0.39369139150336346,0.023740185093990524,1740
+fx_balanced,fixest_tfe_cl_id_none_keepsing,1,w,0.29093614186876965,0.048652866085422637,1740
+fx_balanced,fixest_tfe_twoway_none_keepsing,1,x,-0.57042786854001204,0.039096776882007293,1740
+fx_balanced,fixest_tfe_twoway_none_keepsing,1,"l(x, 1)",0.063366101735477673,0.078750158922915439,1740
+fx_balanced,fixest_tfe_twoway_none_keepsing,1,"l(y, 1)",0.39369139150336346,0.061648039103643359,1740
+fx_balanced,fixest_tfe_twoway_none_keepsing,1,w,0.29093614186876965,0.052211123546620809,1740
+fx_balanced,fixest_tfe_cl_id_default_keepsing,1,x,-0.57042786854001204,0.04325057650192838,1740
+fx_balanced,fixest_tfe_cl_id_default_keepsing,1,"l(x, 1)",0.063366101735477673,0.056324675554387735,1740
+fx_balanced,fixest_tfe_cl_id_default_keepsing,1,"l(y, 1)",0.39369139150336346,0.024580999719130039,1740
+fx_balanced,fixest_tfe_cl_id_default_keepsing,1,w,0.29093614186876965,0.050376022042194553,1740
+fx_balanced,fixest_fe_cl_id_none,2,x,-0.46423472604303101,0.047425892318368475,1710
+fx_balanced,fixest_fe_cl_id_none,2,"l(x, 1)",0.15534732002161949,0.045793521409046481,1710
+fx_balanced,fixest_fe_cl_id_none,2,"l(y, 1)",0.27752460641827775,0.033405941772215293,1710
+fx_balanced,fixest_fe_cl_id_none,2,w,0.17902082422133425,0.056323088910364097,1710
+fx_balanced,fixest_fe_hetero_none,2,x,-0.46423472604303101,0.053630129718165512,1710
+fx_balanced,fixest_fe_hetero_none,2,"l(x, 1)",0.15534732002161949,0.057961218449486381,1710
+fx_balanced,fixest_fe_hetero_none,2,"l(y, 1)",0.27752460641827775,0.02782432834262185,1710
+fx_balanced,fixest_fe_hetero_none,2,w,0.17902082422133425,0.047533130782145626,1710
+fx_balanced,fixest_tfe_cl_id_none,2,x,-0.47661926711272229,0.049025917979152851,1710
+fx_balanced,fixest_tfe_cl_id_none,2,"l(x, 1)",0.12269642847857228,0.045677585337645009,1710
+fx_balanced,fixest_tfe_cl_id_none,2,"l(y, 1)",0.27251000207270709,0.033667707939186303,1710
+fx_balanced,fixest_tfe_cl_id_none,2,w,0.18341381560714359,0.051226738498458151,1710
+fx_balanced,fixest_tfe_twoway_none,2,x,-0.47661926711272229,0.053610172498943461,1710
+fx_balanced,fixest_tfe_twoway_none,2,"l(x, 1)",0.12269642847857228,0.071419074842859934,1710
+fx_balanced,fixest_tfe_twoway_none,2,"l(y, 1)",0.27251000207270709,0.071678000732512001,1710
+fx_balanced,fixest_tfe_twoway_none,2,w,0.18341381560714359,0.051941025855090237,1710
+fx_balanced,fixest_tfe_cl_id_default,2,x,-0.47661926711272229,0.050763091880267522,1710
+fx_balanced,fixest_tfe_cl_id_default,2,"l(x, 1)",0.12269642847857228,0.047296115135460053,1710
+fx_balanced,fixest_tfe_cl_id_default,2,"l(y, 1)",0.27251000207270709,0.034860682307706559,1710
+fx_balanced,fixest_tfe_cl_id_default,2,w,0.18341381560714359,0.05304189580355112,1710
+fx_balanced,fixest_fe_cl_id_none_keepsing,2,x,-0.46423472604303101,0.047425892318368475,1710
+fx_balanced,fixest_fe_cl_id_none_keepsing,2,"l(x, 1)",0.15534732002161949,0.045793521409046481,1710
+fx_balanced,fixest_fe_cl_id_none_keepsing,2,"l(y, 1)",0.27752460641827775,0.033405941772215293,1710
+fx_balanced,fixest_fe_cl_id_none_keepsing,2,w,0.17902082422133425,0.056323088910364097,1710
+fx_balanced,fixest_fe_hetero_none_keepsing,2,x,-0.46423472604303101,0.053630129718165512,1710
+fx_balanced,fixest_fe_hetero_none_keepsing,2,"l(x, 1)",0.15534732002161949,0.057961218449486381,1710
+fx_balanced,fixest_fe_hetero_none_keepsing,2,"l(y, 1)",0.27752460641827775,0.02782432834262185,1710
+fx_balanced,fixest_fe_hetero_none_keepsing,2,w,0.17902082422133425,0.047533130782145626,1710
+fx_balanced,fixest_tfe_cl_id_none_keepsing,2,x,-0.47661926711272229,0.049025917979152851,1710
+fx_balanced,fixest_tfe_cl_id_none_keepsing,2,"l(x, 1)",0.12269642847857228,0.045677585337645009,1710
+fx_balanced,fixest_tfe_cl_id_none_keepsing,2,"l(y, 1)",0.27251000207270709,0.033667707939186303,1710
+fx_balanced,fixest_tfe_cl_id_none_keepsing,2,w,0.18341381560714359,0.051226738498458151,1710
+fx_balanced,fixest_tfe_twoway_none_keepsing,2,x,-0.47661926711272229,0.053610172498943461,1710
+fx_balanced,fixest_tfe_twoway_none_keepsing,2,"l(x, 1)",0.12269642847857228,0.071419074842859934,1710
+fx_balanced,fixest_tfe_twoway_none_keepsing,2,"l(y, 1)",0.27251000207270709,0.071678000732512001,1710
+fx_balanced,fixest_tfe_twoway_none_keepsing,2,w,0.18341381560714359,0.051941025855090237,1710
+fx_balanced,fixest_tfe_cl_id_default_keepsing,2,x,-0.47661926711272229,0.050763091880267522,1710
+fx_balanced,fixest_tfe_cl_id_default_keepsing,2,"l(x, 1)",0.12269642847857228,0.047296115135460053,1710
+fx_balanced,fixest_tfe_cl_id_default_keepsing,2,"l(y, 1)",0.27251000207270709,0.034860682307706559,1710
+fx_balanced,fixest_tfe_cl_id_default_keepsing,2,w,0.18341381560714359,0.05304189580355112,1710
+fx_balanced,fixest_fe_cl_id_none,3,x,-0.26184305445167017,0.054682829174265979,1680
+fx_balanced,fixest_fe_cl_id_none,3,"l(x, 1)",0.076118494885696039,0.044410632431345791,1680
+fx_balanced,fixest_fe_cl_id_none,3,"l(y, 1)",0.18555059216477948,0.036168340667904517,1680
+fx_balanced,fixest_fe_cl_id_none,3,w,0.094485980728246197,0.059874043886735284,1680
+fx_balanced,fixest_fe_hetero_none,3,x,-0.26184305445167017,0.055498804149493861,1680
+fx_balanced,fixest_fe_hetero_none,3,"l(x, 1)",0.076118494885696039,0.058816667203552581,1680
+fx_balanced,fixest_fe_hetero_none,3,"l(y, 1)",0.18555059216477948,0.028325275339509459,1680
+fx_balanced,fixest_fe_hetero_none,3,w,0.094485980728246197,0.049872602872607232,1680
+fx_balanced,fixest_tfe_cl_id_none,3,x,-0.29802495214434715,0.059619925656550186,1680
+fx_balanced,fixest_tfe_cl_id_none,3,"l(x, 1)",0.062364549697693845,0.044190335249588146,1680
+fx_balanced,fixest_tfe_cl_id_none,3,"l(y, 1)",0.16034773499632304,0.035131165960909871,1680
+fx_balanced,fixest_tfe_cl_id_none,3,w,0.11506049255074015,0.056903787369471423,1680
+fx_balanced,fixest_tfe_twoway_none,3,x,-0.29802495214434715,0.056301316136487388,1680
+fx_balanced,fixest_tfe_twoway_none,3,"l(x, 1)",0.062364549697693845,0.069987959990429852,1680
+fx_balanced,fixest_tfe_twoway_none,3,"l(y, 1)",0.16034773499632304,0.07188670968259929,1680
+fx_balanced,fixest_tfe_twoway_none,3,w,0.11506049255074015,0.054836963128204005,1680
+fx_balanced,fixest_tfe_cl_id_default,3,x,-0.29802495214434715,0.061733499890936919,1680
+fx_balanced,fixest_tfe_cl_id_default,3,"l(x, 1)",0.062364549697693845,0.045756918115364996,1680
+fx_balanced,fixest_tfe_cl_id_default,3,"l(y, 1)",0.16034773499632304,0.036376594001640498,1680
+fx_balanced,fixest_tfe_cl_id_default,3,w,0.11506049255074015,0.058921072320747142,1680
+fx_balanced,fixest_fe_cl_id_none_keepsing,3,x,-0.26184305445167017,0.054682829174265979,1680
+fx_balanced,fixest_fe_cl_id_none_keepsing,3,"l(x, 1)",0.076118494885696039,0.044410632431345791,1680
+fx_balanced,fixest_fe_cl_id_none_keepsing,3,"l(y, 1)",0.18555059216477948,0.036168340667904517,1680
+fx_balanced,fixest_fe_cl_id_none_keepsing,3,w,0.094485980728246197,0.059874043886735284,1680
+fx_balanced,fixest_fe_hetero_none_keepsing,3,x,-0.26184305445167017,0.055498804149493861,1680
+fx_balanced,fixest_fe_hetero_none_keepsing,3,"l(x, 1)",0.076118494885696039,0.058816667203552581,1680
+fx_balanced,fixest_fe_hetero_none_keepsing,3,"l(y, 1)",0.18555059216477948,0.028325275339509459,1680
+fx_balanced,fixest_fe_hetero_none_keepsing,3,w,0.094485980728246197,0.049872602872607232,1680
+fx_balanced,fixest_tfe_cl_id_none_keepsing,3,x,-0.29802495214434715,0.059619925656550186,1680
+fx_balanced,fixest_tfe_cl_id_none_keepsing,3,"l(x, 1)",0.062364549697693845,0.044190335249588146,1680
+fx_balanced,fixest_tfe_cl_id_none_keepsing,3,"l(y, 1)",0.16034773499632304,0.035131165960909871,1680
+fx_balanced,fixest_tfe_cl_id_none_keepsing,3,w,0.11506049255074015,0.056903787369471423,1680
+fx_balanced,fixest_tfe_twoway_none_keepsing,3,x,-0.29802495214434715,0.056301316136487388,1680
+fx_balanced,fixest_tfe_twoway_none_keepsing,3,"l(x, 1)",0.062364549697693845,0.069987959990429852,1680
+fx_balanced,fixest_tfe_twoway_none_keepsing,3,"l(y, 1)",0.16034773499632304,0.07188670968259929,1680
+fx_balanced,fixest_tfe_twoway_none_keepsing,3,w,0.11506049255074015,0.054836963128204005,1680
+fx_balanced,fixest_tfe_cl_id_default_keepsing,3,x,-0.29802495214434715,0.061733499890936919,1680
+fx_balanced,fixest_tfe_cl_id_default_keepsing,3,"l(x, 1)",0.062364549697693845,0.045756918115364996,1680
+fx_balanced,fixest_tfe_cl_id_default_keepsing,3,"l(y, 1)",0.16034773499632304,0.036376594001640498,1680
+fx_balanced,fixest_tfe_cl_id_default_keepsing,3,w,0.11506049255074015,0.058921072320747142,1680
+fx_balanced,fixest_fe_cl_id_none,4,x,-0.16674674536898182,0.050282968939313409,1650
+fx_balanced,fixest_fe_cl_id_none,4,"l(x, 1)",0.037335771817654156,0.070159982197500734,1650
+fx_balanced,fixest_fe_cl_id_none,4,"l(y, 1)",0.15340382533846794,0.036713627910857041,1650
+fx_balanced,fixest_fe_cl_id_none,4,w,0.0026122047283321731,0.066448799517986559,1650
+fx_balanced,fixest_fe_hetero_none,4,x,-0.16674674536898182,0.057754941181636696,1650
+fx_balanced,fixest_fe_hetero_none,4,"l(x, 1)",0.037335771817654156,0.061981151802694465,1650
+fx_balanced,fixest_fe_hetero_none,4,"l(y, 1)",0.15340382533846794,0.028044105069611285,1650
+fx_balanced,fixest_fe_hetero_none,4,w,0.0026122047283321731,0.051752420158055978,1650
+fx_balanced,fixest_tfe_cl_id_none,4,x,-0.17094986376755669,0.046624092083613594,1650
+fx_balanced,fixest_tfe_cl_id_none,4,"l(x, 1)",-0.0062455992788590774,0.074374723634671278,1650
+fx_balanced,fixest_tfe_cl_id_none,4,"l(y, 1)",0.10299639773958882,0.035478102566509975,1650
+fx_balanced,fixest_tfe_cl_id_none,4,w,0.023971898293422857,0.061438330910113331,1650
+fx_balanced,fixest_tfe_twoway_none,4,x,-0.17094986376755669,0.049400963706732172,1650
+fx_balanced,fixest_tfe_twoway_none,4,"l(x, 1)",-0.0062455992788590774,0.091828418325756347,1650
+fx_balanced,fixest_tfe_twoway_none,4,"l(y, 1)",0.10299639773958882,0.070409701482221823,1650
+fx_balanced,fixest_tfe_twoway_none,4,w,0.023971898293422857,0.057049811775315457,1650
+fx_balanced,fixest_tfe_cl_id_default,4,x,-0.17094986376755669,0.048277775876424775,1650
+fx_balanced,fixest_tfe_cl_id_default,4,"l(x, 1)",-0.0062455992788590774,0.07701267902582179,1650
+fx_balanced,fixest_tfe_cl_id_default,4,"l(y, 1)",0.10299639773958882,0.03673645550362916,1650
+fx_balanced,fixest_tfe_cl_id_default,4,w,0.023971898293422857,0.063617452637593205,1650
+fx_balanced,fixest_fe_cl_id_none_keepsing,4,x,-0.16674674536898182,0.050282968939313409,1650
+fx_balanced,fixest_fe_cl_id_none_keepsing,4,"l(x, 1)",0.037335771817654156,0.070159982197500734,1650
+fx_balanced,fixest_fe_cl_id_none_keepsing,4,"l(y, 1)",0.15340382533846794,0.036713627910857041,1650
+fx_balanced,fixest_fe_cl_id_none_keepsing,4,w,0.0026122047283321731,0.066448799517986559,1650
+fx_balanced,fixest_fe_hetero_none_keepsing,4,x,-0.16674674536898182,0.057754941181636696,1650
+fx_balanced,fixest_fe_hetero_none_keepsing,4,"l(x, 1)",0.037335771817654156,0.061981151802694465,1650
+fx_balanced,fixest_fe_hetero_none_keepsing,4,"l(y, 1)",0.15340382533846794,0.028044105069611285,1650
+fx_balanced,fixest_fe_hetero_none_keepsing,4,w,0.0026122047283321731,0.051752420158055978,1650
+fx_balanced,fixest_tfe_cl_id_none_keepsing,4,x,-0.17094986376755669,0.046624092083613594,1650
+fx_balanced,fixest_tfe_cl_id_none_keepsing,4,"l(x, 1)",-0.0062455992788590774,0.074374723634671278,1650
+fx_balanced,fixest_tfe_cl_id_none_keepsing,4,"l(y, 1)",0.10299639773958882,0.035478102566509975,1650
+fx_balanced,fixest_tfe_cl_id_none_keepsing,4,w,0.023971898293422857,0.061438330910113331,1650
+fx_balanced,fixest_tfe_twoway_none_keepsing,4,x,-0.17094986376755669,0.049400963706732172,1650
+fx_balanced,fixest_tfe_twoway_none_keepsing,4,"l(x, 1)",-0.0062455992788590774,0.091828418325756347,1650
+fx_balanced,fixest_tfe_twoway_none_keepsing,4,"l(y, 1)",0.10299639773958882,0.070409701482221823,1650
+fx_balanced,fixest_tfe_twoway_none_keepsing,4,w,0.023971898293422857,0.057049811775315457,1650
+fx_balanced,fixest_tfe_cl_id_default_keepsing,4,x,-0.17094986376755669,0.048277775876424775,1650
+fx_balanced,fixest_tfe_cl_id_default_keepsing,4,"l(x, 1)",-0.0062455992788590774,0.07701267902582179,1650
+fx_balanced,fixest_tfe_cl_id_default_keepsing,4,"l(y, 1)",0.10299639773958882,0.03673645550362916,1650
+fx_balanced,fixest_tfe_cl_id_default_keepsing,4,w,0.023971898293422857,0.063617452637593205,1650
+fx_balanced,fixest_fe_cl_id_none,5,x,-0.14801898901157812,0.059442211226278859,1620
+fx_balanced,fixest_fe_cl_id_none,5,"l(x, 1)",0.055474641411340821,0.065656398178118996,1620
+fx_balanced,fixest_fe_cl_id_none,5,"l(y, 1)",0.11849419385305419,0.035017750420996925,1620
+fx_balanced,fixest_fe_cl_id_none,5,w,-0.0023185984212053755,0.067026172373747681,1620
+fx_balanced,fixest_fe_hetero_none,5,x,-0.14801898901157812,0.057938002546005528,1620
+fx_balanced,fixest_fe_hetero_none,5,"l(x, 1)",0.055474641411340821,0.063447574097056966,1620
+fx_balanced,fixest_fe_hetero_none,5,"l(y, 1)",0.11849419385305419,0.028353226150897602,1620
+fx_balanced,fixest_fe_hetero_none,5,w,-0.0023185984212053755,0.052911047009753985,1620
+fx_balanced,fixest_tfe_cl_id_none,5,x,-0.12815024735205305,0.0538590089898668,1620
+fx_balanced,fixest_tfe_cl_id_none,5,"l(x, 1)",-0.026233586985109358,0.064261358058155305,1620
+fx_balanced,fixest_tfe_cl_id_none,5,"l(y, 1)",0.067566487757265425,0.031157767382894445,1620
+fx_balanced,fixest_tfe_cl_id_none,5,w,0.0040958689682125083,0.06579276343336643,1620
+fx_balanced,fixest_tfe_twoway_none,5,x,-0.12815024735205305,0.054744596840095874,1620
+fx_balanced,fixest_tfe_twoway_none,5,"l(x, 1)",-0.026233586985109358,0.083670357484613253,1620
+fx_balanced,fixest_tfe_twoway_none,5,"l(y, 1)",0.067566487757265425,0.067380844115685554,1620
+fx_balanced,fixest_tfe_twoway_none,5,w,0.0040958689682125083,0.063531799857291682,1620
+fx_balanced,fixest_tfe_cl_id_default,5,x,-0.12815024735205305,0.055770289142936615,1620
+fx_balanced,fixest_tfe_cl_id_default,5,"l(x, 1)",-0.026233586985109358,0.066541783572278176,1620
+fx_balanced,fixest_tfe_cl_id_default,5,"l(y, 1)",0.067566487757265425,0.032263454686277546,1620
+fx_balanced,fixest_tfe_cl_id_default,5,w,0.0040958689682125083,0.068127533517782016,1620
+fx_balanced,fixest_fe_cl_id_none_keepsing,5,x,-0.14801898901157812,0.059442211226278859,1620
+fx_balanced,fixest_fe_cl_id_none_keepsing,5,"l(x, 1)",0.055474641411340821,0.065656398178118996,1620
+fx_balanced,fixest_fe_cl_id_none_keepsing,5,"l(y, 1)",0.11849419385305419,0.035017750420996925,1620
+fx_balanced,fixest_fe_cl_id_none_keepsing,5,w,-0.0023185984212053755,0.067026172373747681,1620
+fx_balanced,fixest_fe_hetero_none_keepsing,5,x,-0.14801898901157812,0.057938002546005528,1620
+fx_balanced,fixest_fe_hetero_none_keepsing,5,"l(x, 1)",0.055474641411340821,0.063447574097056966,1620
+fx_balanced,fixest_fe_hetero_none_keepsing,5,"l(y, 1)",0.11849419385305419,0.028353226150897602,1620
+fx_balanced,fixest_fe_hetero_none_keepsing,5,w,-0.0023185984212053755,0.052911047009753985,1620
+fx_balanced,fixest_tfe_cl_id_none_keepsing,5,x,-0.12815024735205305,0.0538590089898668,1620
+fx_balanced,fixest_tfe_cl_id_none_keepsing,5,"l(x, 1)",-0.026233586985109358,0.064261358058155305,1620
+fx_balanced,fixest_tfe_cl_id_none_keepsing,5,"l(y, 1)",0.067566487757265425,0.031157767382894445,1620
+fx_balanced,fixest_tfe_cl_id_none_keepsing,5,w,0.0040958689682125083,0.06579276343336643,1620
+fx_balanced,fixest_tfe_twoway_none_keepsing,5,x,-0.12815024735205305,0.054744596840095874,1620
+fx_balanced,fixest_tfe_twoway_none_keepsing,5,"l(x, 1)",-0.026233586985109358,0.083670357484613253,1620
+fx_balanced,fixest_tfe_twoway_none_keepsing,5,"l(y, 1)",0.067566487757265425,0.067380844115685554,1620
+fx_balanced,fixest_tfe_twoway_none_keepsing,5,w,0.0040958689682125083,0.063531799857291682,1620
+fx_balanced,fixest_tfe_cl_id_default_keepsing,5,x,-0.12815024735205305,0.055770289142936615,1620
+fx_balanced,fixest_tfe_cl_id_default_keepsing,5,"l(x, 1)",-0.026233586985109358,0.066541783572278176,1620
+fx_balanced,fixest_tfe_cl_id_default_keepsing,5,"l(y, 1)",0.067566487757265425,0.032263454686277546,1620
+fx_balanced,fixest_tfe_cl_id_default_keepsing,5,w,0.0040958689682125083,0.068127533517782016,1620
+fx_balanced,fixest_fe_cl_id_none,6,x,-0.10506751280207709,0.073990027825320687,1590
+fx_balanced,fixest_fe_cl_id_none,6,"l(x, 1)",0.046736643383344476,0.051585644158370136,1590
+fx_balanced,fixest_fe_cl_id_none,6,"l(y, 1)",0.056214718278300761,0.030632123179666619,1590
+fx_balanced,fixest_fe_cl_id_none,6,w,0.036801515053083066,0.068940907764485901,1590
+fx_balanced,fixest_fe_hetero_none,6,x,-0.10506751280207709,0.062380268907119583,1590
+fx_balanced,fixest_fe_hetero_none,6,"l(x, 1)",0.046736643383344476,0.064262011955591933,1590
+fx_balanced,fixest_fe_hetero_none,6,"l(y, 1)",0.056214718278300761,0.030129942007704007,1590
+fx_balanced,fixest_fe_hetero_none,6,w,0.036801515053083066,0.053170457218553596,1590
+fx_balanced,fixest_tfe_cl_id_none,6,x,-0.11942945482499874,0.065359207702729877,1590
+fx_balanced,fixest_tfe_cl_id_none,6,"l(x, 1)",-0.028329301738151697,0.057492077466757351,1590
+fx_balanced,fixest_tfe_cl_id_none,6,"l(y, 1)",0.011902749452200096,0.027936833164192779,1590
+fx_balanced,fixest_tfe_cl_id_none,6,w,0.051180318199350622,0.073777643145096702,1590
+fx_balanced,fixest_tfe_twoway_none,6,x,-0.11942945482499874,0.066475816849476524,1590
+fx_balanced,fixest_tfe_twoway_none,6,"l(x, 1)",-0.028329301738151697,0.082967117504225696,1590
+fx_balanced,fixest_tfe_twoway_none,6,"l(y, 1)",0.011902749452200096,0.070108154379666859,1590
+fx_balanced,fixest_tfe_twoway_none,6,w,0.051180318199350622,0.077365625689000364,1590
+fx_balanced,fixest_tfe_cl_id_default,6,x,-0.11942945482499874,0.067679833020065458,1590
+fx_balanced,fixest_tfe_cl_id_default,6,"l(x, 1)",-0.028329301738151697,0.059533374710175481,1590
+fx_balanced,fixest_tfe_cl_id_default,6,"l(y, 1)",0.011902749452200096,0.028928750364625708,1590
+fx_balanced,fixest_tfe_cl_id_default,6,w,0.051180318199350622,0.076397171021177587,1590
+fx_balanced,fixest_fe_cl_id_none_keepsing,6,x,-0.10506751280207709,0.073990027825320687,1590
+fx_balanced,fixest_fe_cl_id_none_keepsing,6,"l(x, 1)",0.046736643383344476,0.051585644158370136,1590
+fx_balanced,fixest_fe_cl_id_none_keepsing,6,"l(y, 1)",0.056214718278300761,0.030632123179666619,1590
+fx_balanced,fixest_fe_cl_id_none_keepsing,6,w,0.036801515053083066,0.068940907764485901,1590
+fx_balanced,fixest_fe_hetero_none_keepsing,6,x,-0.10506751280207709,0.062380268907119583,1590
+fx_balanced,fixest_fe_hetero_none_keepsing,6,"l(x, 1)",0.046736643383344476,0.064262011955591933,1590
+fx_balanced,fixest_fe_hetero_none_keepsing,6,"l(y, 1)",0.056214718278300761,0.030129942007704007,1590
+fx_balanced,fixest_fe_hetero_none_keepsing,6,w,0.036801515053083066,0.053170457218553596,1590
+fx_balanced,fixest_tfe_cl_id_none_keepsing,6,x,-0.11942945482499874,0.065359207702729877,1590
+fx_balanced,fixest_tfe_cl_id_none_keepsing,6,"l(x, 1)",-0.028329301738151697,0.057492077466757351,1590
+fx_balanced,fixest_tfe_cl_id_none_keepsing,6,"l(y, 1)",0.011902749452200096,0.027936833164192779,1590
+fx_balanced,fixest_tfe_cl_id_none_keepsing,6,w,0.051180318199350622,0.073777643145096702,1590
+fx_balanced,fixest_tfe_twoway_none_keepsing,6,x,-0.11942945482499874,0.066475816849476524,1590
+fx_balanced,fixest_tfe_twoway_none_keepsing,6,"l(x, 1)",-0.028329301738151697,0.082967117504225696,1590
+fx_balanced,fixest_tfe_twoway_none_keepsing,6,"l(y, 1)",0.011902749452200096,0.070108154379666859,1590
+fx_balanced,fixest_tfe_twoway_none_keepsing,6,w,0.051180318199350622,0.077365625689000364,1590
+fx_balanced,fixest_tfe_cl_id_default_keepsing,6,x,-0.11942945482499874,0.067679833020065458,1590
+fx_balanced,fixest_tfe_cl_id_default_keepsing,6,"l(x, 1)",-0.028329301738151697,0.059533374710175481,1590
+fx_balanced,fixest_tfe_cl_id_default_keepsing,6,"l(y, 1)",0.011902749452200096,0.028928750364625708,1590
+fx_balanced,fixest_tfe_cl_id_default_keepsing,6,w,0.051180318199350622,0.076397171021177587,1590
+fx_unbalanced,fixest_fe_cl_id_none,0,x,-0.6038555313243732,0.033804344057731486,1795
+fx_unbalanced,fixest_fe_cl_id_none,0,"l(x, 1)",0.13091602451737283,0.049464657440578985,1795
+fx_unbalanced,fixest_fe_cl_id_none,0,"l(y, 1)",0.66042503568765365,0.022498345092021817,1795
+fx_unbalanced,fixest_fe_cl_id_none,0,w,0.22835388274647891,0.033577992703712034,1795
+fx_unbalanced,fixest_fe_hetero_none,0,x,-0.6038555313243732,0.042442001891123855,1795
+fx_unbalanced,fixest_fe_hetero_none,0,"l(x, 1)",0.13091602451737283,0.046102818384272853,1795
+fx_unbalanced,fixest_fe_hetero_none,0,"l(y, 1)",0.66042503568765365,0.018879144754496511,1795
+fx_unbalanced,fixest_fe_hetero_none,0,w,0.22835388274647891,0.034425114602063746,1795
+fx_unbalanced,fixest_tfe_cl_id_none,0,x,-0.58466843241701316,0.0238111445000149,1795
+fx_unbalanced,fixest_tfe_cl_id_none,0,"l(x, 1)",0.10870242957930445,0.034458401128878886,1795
+fx_unbalanced,fixest_tfe_cl_id_none,0,"l(y, 1)",0.63094518289905133,0.022382681464153623,1795
+fx_unbalanced,fixest_tfe_cl_id_none,0,w,0.24655537552171305,0.027331824118316944,1795
+fx_unbalanced,fixest_tfe_twoway_none,0,x,-0.58466843241701316,0.026251341309025324,1795
+fx_unbalanced,fixest_tfe_twoway_none,0,"l(x, 1)",0.10870242957930445,0.047466222159429174,1795
+fx_unbalanced,fixest_tfe_twoway_none,0,"l(y, 1)",0.63094518289905133,0.044926407321939803,1795
+fx_unbalanced,fixest_tfe_twoway_none,0,w,0.24655537552171305,0.026003831550410198,1795
+fx_unbalanced,fixest_tfe_cl_id_default,0,x,-0.58466843241701316,0.024624786332664923,1795
+fx_unbalanced,fixest_tfe_cl_id_default,0,"l(x, 1)",0.10870242957930445,0.035635866439068957,1795
+fx_unbalanced,fixest_tfe_cl_id_default,0,"l(y, 1)",0.63094518289905133,0.023147511813492953,1795
+fx_unbalanced,fixest_tfe_cl_id_default,0,w,0.24655537552171305,0.028265769795110494,1795
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,0,x,-0.6038555313243732,0.033804344057731486,1796
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,0,"l(x, 1)",0.13091602451737283,0.049464657440578985,1796
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,0,"l(y, 1)",0.66042503568765365,0.022498345092021817,1796
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,0,w,0.22835388274647891,0.033577992703712034,1796
+fx_unbalanced,fixest_fe_hetero_none_keepsing,0,x,-0.6038555313243732,0.042442001891123855,1796
+fx_unbalanced,fixest_fe_hetero_none_keepsing,0,"l(x, 1)",0.13091602451737283,0.046102818384272853,1796
+fx_unbalanced,fixest_fe_hetero_none_keepsing,0,"l(y, 1)",0.66042503568765365,0.018879144754496511,1796
+fx_unbalanced,fixest_fe_hetero_none_keepsing,0,w,0.22835388274647891,0.034425114602063746,1796
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,0,x,-0.58466843241701349,0.023811144500014939,1796
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,0,"l(x, 1)",0.10870242957930452,0.034458401128878921,1796
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,0,"l(y, 1)",0.63094518289905133,0.022382681464153609,1796
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,0,w,0.24655537552171297,0.027331824118316961,1796
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,0,x,-0.58466843241701349,0.026251341309025362,1796
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,0,"l(x, 1)",0.10870242957930452,0.047466222159429187,1796
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,0,"l(y, 1)",0.63094518289905133,0.044926407321939768,1796
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,0,w,0.24655537552171297,0.026003831550410229,1796
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,0,x,-0.58466843241701349,0.024615512574366099,1796
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,0,"l(x, 1)",0.10870242957930452,0.035622445879488825,1796
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,0,"l(y, 1)",0.63094518289905133,0.023138794400603405,1796
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,0,w,0.24655537552171297,0.028255124833011357,1796
+fx_unbalanced,fixest_fe_cl_id_none,1,x,-0.6520392026175903,0.050577025199292656,1672
+fx_unbalanced,fixest_fe_cl_id_none,1,"l(x, 1)",0.19226649139656049,0.058970085951496901,1672
+fx_unbalanced,fixest_fe_cl_id_none,1,"l(y, 1)",0.4383601346242324,0.029477975508372067,1672
+fx_unbalanced,fixest_fe_cl_id_none,1,w,0.19536799531262564,0.048937670729220985,1672
+fx_unbalanced,fixest_fe_hetero_none,1,x,-0.6520392026175903,0.053849836899493742,1672
+fx_unbalanced,fixest_fe_hetero_none,1,"l(x, 1)",0.19226649139656049,0.060309252037800049,1672
+fx_unbalanced,fixest_fe_hetero_none,1,"l(y, 1)",0.4383601346242324,0.025458386161429467,1672
+fx_unbalanced,fixest_fe_hetero_none,1,w,0.19536799531262564,0.045383941140377471,1672
+fx_unbalanced,fixest_tfe_cl_id_none,1,x,-0.63090868711424097,0.032646562773304813,1671
+fx_unbalanced,fixest_tfe_cl_id_none,1,"l(x, 1)",0.1344953090249153,0.044111375547759887,1671
+fx_unbalanced,fixest_tfe_cl_id_none,1,"l(y, 1)",0.41011367230650564,0.027131156053942628,1671
+fx_unbalanced,fixest_tfe_cl_id_none,1,w,0.24248214887170694,0.034949389005947629,1671
+fx_unbalanced,fixest_tfe_twoway_none,1,x,-0.63090868711424097,0.036018721382168772,1671
+fx_unbalanced,fixest_tfe_twoway_none,1,"l(x, 1)",0.1344953090249153,0.060934381028235778,1671
+fx_unbalanced,fixest_tfe_twoway_none,1,"l(y, 1)",0.41011367230650564,0.058901588996750298,1671
+fx_unbalanced,fixest_tfe_twoway_none,1,w,0.24248214887170694,0.033784774910108666,1671
+fx_unbalanced,fixest_tfe_cl_id_default,1,x,-0.63090868711424097,0.03378147038617451,1671
+fx_unbalanced,fixest_tfe_cl_id_default,1,"l(x, 1)",0.1344953090249153,0.045644839767896503,1671
+fx_unbalanced,fixest_tfe_cl_id_default,1,"l(y, 1)",0.41011367230650564,0.028074329023341827,1671
+fx_unbalanced,fixest_tfe_cl_id_default,1,w,0.24248214887170694,0.036164350835878101,1671
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,1,x,-0.6520392026175903,0.050577025199292656,1672
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,1,"l(x, 1)",0.19226649139656049,0.058970085951496901,1672
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,1,"l(y, 1)",0.4383601346242324,0.029477975508372067,1672
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,1,w,0.19536799531262564,0.048937670729220985,1672
+fx_unbalanced,fixest_fe_hetero_none_keepsing,1,x,-0.6520392026175903,0.053849836899493742,1672
+fx_unbalanced,fixest_fe_hetero_none_keepsing,1,"l(x, 1)",0.19226649139656049,0.060309252037800049,1672
+fx_unbalanced,fixest_fe_hetero_none_keepsing,1,"l(y, 1)",0.4383601346242324,0.025458386161429467,1672
+fx_unbalanced,fixest_fe_hetero_none_keepsing,1,w,0.19536799531262564,0.045383941140377471,1672
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,1,x,-0.6309086871142402,0.032646562773304792,1672
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,1,"l(x, 1)",0.13449530902491458,0.044111375547759679,1672
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,1,"l(y, 1)",0.41011367230650531,0.027131156053942607,1672
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,1,w,0.2424821488717071,0.034949389005947636,1672
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,1,x,-0.6309086871142402,0.036018721382168765,1672
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,1,"l(x, 1)",0.13449530902491458,0.060934381028235306,1672
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,1,"l(y, 1)",0.41011367230650531,0.058901588996750152,1672
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,1,w,0.2424821488717071,0.033784774910108638,1672
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,1,x,-0.6309086871142402,0.033791583085214426,1672
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,1,"l(x, 1)",0.13449530902491458,0.045658503842373264,1672
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,1,"l(y, 1)",0.41011367230650531,0.028082733253143401,1672
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,1,w,0.2424821488717071,0.036175176865408408,1672
+fx_unbalanced,fixest_fe_cl_id_none,2,x,-0.48218812226603897,0.055235290318523644,1639
+fx_unbalanced,fixest_fe_cl_id_none,2,"l(x, 1)",0.11933669964150743,0.083273305036675196,1639
+fx_unbalanced,fixest_fe_cl_id_none,2,"l(y, 1)",0.27227691254968805,0.034700447815392957,1639
+fx_unbalanced,fixest_fe_cl_id_none,2,w,0.1641597027386259,0.056874337374355488,1639
+fx_unbalanced,fixest_fe_hetero_none,2,x,-0.48218812226603897,0.059399728388218366,1639
+fx_unbalanced,fixest_fe_hetero_none,2,"l(x, 1)",0.11933669964150743,0.068506146099670887,1639
+fx_unbalanced,fixest_fe_hetero_none,2,"l(y, 1)",0.27227691254968805,0.027641319433326192,1639
+fx_unbalanced,fixest_fe_hetero_none,2,w,0.1641597027386259,0.051409776228610087,1639
+fx_unbalanced,fixest_tfe_cl_id_none,2,x,-0.50156625766857799,0.038473625656075636,1639
+fx_unbalanced,fixest_tfe_cl_id_none,2,"l(x, 1)",0.084584433748483248,0.055841145592463504,1639
+fx_unbalanced,fixest_tfe_cl_id_none,2,"l(y, 1)",0.22904606185375506,0.030275041542974723,1639
+fx_unbalanced,fixest_tfe_cl_id_none,2,w,0.19266067932515271,0.043572357912662715,1639
+fx_unbalanced,fixest_tfe_twoway_none,2,x,-0.50156625766857799,0.026602843316169904,1639
+fx_unbalanced,fixest_tfe_twoway_none,2,"l(x, 1)",0.084584433748483248,0.073177545321708587,1639
+fx_unbalanced,fixest_tfe_twoway_none,2,"l(y, 1)",0.22904606185375506,0.064344252249345452,1639
+fx_unbalanced,fixest_tfe_twoway_none,2,w,0.19266067932515271,0.043429225524412605,1639
+fx_unbalanced,fixest_tfe_cl_id_default,2,x,-0.50156625766857799,0.039827365795686465,1639
+fx_unbalanced,fixest_tfe_cl_id_default,2,"l(x, 1)",0.084584433748483248,0.057805982514934115,1639
+fx_unbalanced,fixest_tfe_cl_id_default,2,"l(y, 1)",0.22904606185375506,0.031340304778924466,1639
+fx_unbalanced,fixest_tfe_cl_id_default,2,w,0.19266067932515271,0.045105502992649385,1639
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,2,x,-0.48218812226603897,0.055235290318523644,1639
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,2,"l(x, 1)",0.11933669964150743,0.083273305036675196,1639
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,2,"l(y, 1)",0.27227691254968805,0.034700447815392957,1639
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,2,w,0.1641597027386259,0.056874337374355488,1639
+fx_unbalanced,fixest_fe_hetero_none_keepsing,2,x,-0.48218812226603897,0.059399728388218366,1639
+fx_unbalanced,fixest_fe_hetero_none_keepsing,2,"l(x, 1)",0.11933669964150743,0.068506146099670887,1639
+fx_unbalanced,fixest_fe_hetero_none_keepsing,2,"l(y, 1)",0.27227691254968805,0.027641319433326192,1639
+fx_unbalanced,fixest_fe_hetero_none_keepsing,2,w,0.1641597027386259,0.051409776228610087,1639
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,2,x,-0.50156625766857799,0.038473625656075636,1639
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,2,"l(x, 1)",0.084584433748483248,0.055841145592463504,1639
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,2,"l(y, 1)",0.22904606185375506,0.030275041542974723,1639
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,2,w,0.19266067932515271,0.043572357912662715,1639
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,2,x,-0.50156625766857799,0.026602843316169904,1639
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,2,"l(x, 1)",0.084584433748483248,0.073177545321708587,1639
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,2,"l(y, 1)",0.22904606185375506,0.064344252249345452,1639
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,2,w,0.19266067932515271,0.043429225524412605,1639
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,2,x,-0.50156625766857799,0.039827365795686465,1639
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,2,"l(x, 1)",0.084584433748483248,0.057805982514934115,1639
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,2,"l(y, 1)",0.22904606185375506,0.031340304778924466,1639
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,2,w,0.19266067932515271,0.045105502992649385,1639
+fx_unbalanced,fixest_fe_cl_id_none,3,x,-0.36923752829955608,0.071877905634276124,1610
+fx_unbalanced,fixest_fe_cl_id_none,3,"l(x, 1)",0.028176284060527083,0.097060211533472093,1610
+fx_unbalanced,fixest_fe_cl_id_none,3,"l(y, 1)",0.14134205057319332,0.028793526101145071,1610
+fx_unbalanced,fixest_fe_cl_id_none,3,w,0.11586936172548727,0.061870901254637088,1610
+fx_unbalanced,fixest_fe_hetero_none,3,x,-0.36923752829955608,0.068077833860611378,1610
+fx_unbalanced,fixest_fe_hetero_none,3,"l(x, 1)",0.028176284060527083,0.071989241983459351,1610
+fx_unbalanced,fixest_fe_hetero_none,3,"l(y, 1)",0.14134205057319332,0.027786011161864171,1610
+fx_unbalanced,fixest_fe_hetero_none,3,w,0.11586936172548727,0.053219929703008678,1610
+fx_unbalanced,fixest_tfe_cl_id_none,3,x,-0.39195238737309673,0.043185427722294667,1610
+fx_unbalanced,fixest_tfe_cl_id_none,3,"l(x, 1)",0.049252297798780077,0.06833459411295148,1610
+fx_unbalanced,fixest_tfe_cl_id_none,3,"l(y, 1)",0.085974035064222076,0.02948735159066581,1610
+fx_unbalanced,fixest_tfe_cl_id_none,3,w,0.14388726450830172,0.048505177161221685,1610
+fx_unbalanced,fixest_tfe_twoway_none,3,x,-0.39195238737309673,0.038136077159312103,1610
+fx_unbalanced,fixest_tfe_twoway_none,3,"l(x, 1)",0.049252297798780077,0.076405580443374491,1610
+fx_unbalanced,fixest_tfe_twoway_none,3,"l(y, 1)",0.085974035064222076,0.062309592879987906,1610
+fx_unbalanced,fixest_tfe_twoway_none,3,w,0.14388726450830172,0.044423189478938918,1610
+fx_unbalanced,fixest_tfe_cl_id_default,3,x,-0.39195238737309673,0.044707655525587156,1610
+fx_unbalanced,fixest_tfe_cl_id_default,3,"l(x, 1)",0.049252297798780077,0.070743295949931104,1610
+fx_unbalanced,fixest_tfe_cl_id_default,3,"l(y, 1)",0.085974035064222076,0.030526740773642449,1610
+fx_unbalanced,fixest_tfe_cl_id_default,3,w,0.14388726450830172,0.050214918923031801,1610
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,3,x,-0.36923752829955608,0.071877905634276124,1610
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,3,"l(x, 1)",0.028176284060527083,0.097060211533472093,1610
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,3,"l(y, 1)",0.14134205057319332,0.028793526101145071,1610
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,3,w,0.11586936172548727,0.061870901254637088,1610
+fx_unbalanced,fixest_fe_hetero_none_keepsing,3,x,-0.36923752829955608,0.068077833860611378,1610
+fx_unbalanced,fixest_fe_hetero_none_keepsing,3,"l(x, 1)",0.028176284060527083,0.071989241983459351,1610
+fx_unbalanced,fixest_fe_hetero_none_keepsing,3,"l(y, 1)",0.14134205057319332,0.027786011161864171,1610
+fx_unbalanced,fixest_fe_hetero_none_keepsing,3,w,0.11586936172548727,0.053219929703008678,1610
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,3,x,-0.39195238737309673,0.043185427722294667,1610
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,3,"l(x, 1)",0.049252297798780077,0.06833459411295148,1610
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,3,"l(y, 1)",0.085974035064222076,0.02948735159066581,1610
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,3,w,0.14388726450830172,0.048505177161221685,1610
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,3,x,-0.39195238737309673,0.038136077159312103,1610
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,3,"l(x, 1)",0.049252297798780077,0.076405580443374491,1610
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,3,"l(y, 1)",0.085974035064222076,0.062309592879987906,1610
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,3,w,0.14388726450830172,0.044423189478938918,1610
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,3,x,-0.39195238737309673,0.044707655525587156,1610
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,3,"l(x, 1)",0.049252297798780077,0.070743295949931104,1610
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,3,"l(y, 1)",0.085974035064222076,0.030526740773642449,1610
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,3,w,0.14388726450830172,0.050214918923031801,1610
+fx_unbalanced,fixest_fe_cl_id_none,4,x,-0.18689654972865227,0.084825472512424269,1569
+fx_unbalanced,fixest_fe_cl_id_none,4,"l(x, 1)",-0.12074618797908324,0.071646701462203949,1569
+fx_unbalanced,fixest_fe_cl_id_none,4,"l(y, 1)",0.082632489831817438,0.028201852004961329,1569
+fx_unbalanced,fixest_fe_cl_id_none,4,w,0.05098024474197483,0.083875529964723666,1569
+fx_unbalanced,fixest_fe_hetero_none,4,x,-0.18689654972865227,0.068452405541873151,1569
+fx_unbalanced,fixest_fe_hetero_none,4,"l(x, 1)",-0.12074618797908324,0.072070430738705393,1569
+fx_unbalanced,fixest_fe_hetero_none,4,"l(y, 1)",0.082632489831817438,0.029480542842081542,1569
+fx_unbalanced,fixest_fe_hetero_none,4,w,0.05098024474197483,0.055770778871299852,1569
+fx_unbalanced,fixest_tfe_cl_id_none,4,x,-0.18872088977645163,0.053150688440423803,1569
+fx_unbalanced,fixest_tfe_cl_id_none,4,"l(x, 1)",-0.11917787335185175,0.055395455277882956,1569
+fx_unbalanced,fixest_tfe_cl_id_none,4,"l(y, 1)",-0.027786553593098024,0.035273786546583287,1569
+fx_unbalanced,fixest_tfe_cl_id_none,4,w,0.10741854092128374,0.068807884859808724,1569
+fx_unbalanced,fixest_tfe_twoway_none,4,x,-0.18872088977645163,0.043014408518165001,1569
+fx_unbalanced,fixest_tfe_twoway_none,4,"l(x, 1)",-0.11917787335185175,0.064004468934547795,1569
+fx_unbalanced,fixest_tfe_twoway_none,4,"l(y, 1)",-0.027786553593098024,0.065362946284194479,1569
+fx_unbalanced,fixest_tfe_twoway_none,4,w,0.10741854092128374,0.06533963550092127,1569
+fx_unbalanced,fixest_tfe_cl_id_default,4,x,-0.18872088977645163,0.05503665678121946,1569
+fx_unbalanced,fixest_tfe_cl_id_default,4,"l(x, 1)",-0.11917787335185175,0.057361075629069051,1569
+fx_unbalanced,fixest_tfe_cl_id_default,4,"l(y, 1)",-0.027786553593098024,0.036525421222235836,1569
+fx_unbalanced,fixest_tfe_cl_id_default,4,w,0.10741854092128374,0.071249424118292062,1569
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,4,x,-0.18689654972865227,0.084825472512424269,1569
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,4,"l(x, 1)",-0.12074618797908324,0.071646701462203949,1569
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,4,"l(y, 1)",0.082632489831817438,0.028201852004961329,1569
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,4,w,0.05098024474197483,0.083875529964723666,1569
+fx_unbalanced,fixest_fe_hetero_none_keepsing,4,x,-0.18689654972865227,0.068452405541873151,1569
+fx_unbalanced,fixest_fe_hetero_none_keepsing,4,"l(x, 1)",-0.12074618797908324,0.072070430738705393,1569
+fx_unbalanced,fixest_fe_hetero_none_keepsing,4,"l(y, 1)",0.082632489831817438,0.029480542842081542,1569
+fx_unbalanced,fixest_fe_hetero_none_keepsing,4,w,0.05098024474197483,0.055770778871299852,1569
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,4,x,-0.18872088977645163,0.053150688440423803,1569
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,4,"l(x, 1)",-0.11917787335185175,0.055395455277882956,1569
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,4,"l(y, 1)",-0.027786553593098024,0.035273786546583287,1569
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,4,w,0.10741854092128374,0.068807884859808724,1569
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,4,x,-0.18872088977645163,0.043014408518165001,1569
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,4,"l(x, 1)",-0.11917787335185175,0.064004468934547795,1569
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,4,"l(y, 1)",-0.027786553593098024,0.065362946284194479,1569
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,4,w,0.10741854092128374,0.06533963550092127,1569
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,4,x,-0.18872088977645163,0.05503665678121946,1569
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,4,"l(x, 1)",-0.11917787335185175,0.057361075629069051,1569
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,4,"l(y, 1)",-0.027786553593098024,0.036525421222235836,1569
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,4,w,0.10741854092128374,0.071249424118292062,1569
+fx_unbalanced,fixest_fe_cl_id_none,5,x,-0.21427073439400496,0.070955240409570533,1530
+fx_unbalanced,fixest_fe_cl_id_none,5,"l(x, 1)",0.00088049476960256441,0.095673282838941956,1530
+fx_unbalanced,fixest_fe_cl_id_none,5,"l(y, 1)",0.12117855006040709,0.034988806088555965,1530
+fx_unbalanced,fixest_fe_cl_id_none,5,w,-0.011860792742561643,0.096955280271041722,1530
+fx_unbalanced,fixest_fe_hetero_none,5,x,-0.21427073439400496,0.066969266464439695,1530
+fx_unbalanced,fixest_fe_hetero_none,5,"l(x, 1)",0.00088049476960256441,0.07394097516244047,1530
+fx_unbalanced,fixest_fe_hetero_none,5,"l(y, 1)",0.12117855006040709,0.029552878413618189,1530
+fx_unbalanced,fixest_fe_hetero_none,5,w,-0.011860792742561643,0.057172240804334577,1530
+fx_unbalanced,fixest_tfe_cl_id_none,5,x,-0.15904914250033295,0.04876536382438728,1530
+fx_unbalanced,fixest_tfe_cl_id_none,5,"l(x, 1)",-0.0636747310133077,0.075789478506399707,1530
+fx_unbalanced,fixest_tfe_cl_id_none,5,"l(y, 1)",-0.0044318245363497225,0.03989500612948934,1530
+fx_unbalanced,fixest_tfe_cl_id_none,5,w,0.029019160217392436,0.074873679893844469,1530
+fx_unbalanced,fixest_tfe_twoway_none,5,x,-0.15904914250033295,0.046870676723369302,1530
+fx_unbalanced,fixest_tfe_twoway_none,5,"l(x, 1)",-0.0636747310133077,0.085517547670148075,1530
+fx_unbalanced,fixest_tfe_twoway_none,5,"l(y, 1)",-0.0044318245363497225,0.067875542813006326,1530
+fx_unbalanced,fixest_tfe_twoway_none,5,w,0.029019160217392436,0.074506232566701372,1530
+fx_unbalanced,fixest_tfe_cl_id_default,5,x,-0.15904914250033295,0.050506353108526948,1530
+fx_unbalanced,fixest_tfe_cl_id_default,5,"l(x, 1)",-0.0636747310133077,0.078495265146387591,1530
+fx_unbalanced,fixest_tfe_cl_id_default,5,"l(y, 1)",-0.0044318245363497225,0.041319311675783496,1530
+fx_unbalanced,fixest_tfe_cl_id_default,5,w,0.029019160217392436,0.077546771287742733,1530
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,5,x,-0.21427073439400496,0.070955240409570533,1530
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,5,"l(x, 1)",0.00088049476960256441,0.095673282838941956,1530
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,5,"l(y, 1)",0.12117855006040709,0.034988806088555965,1530
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,5,w,-0.011860792742561643,0.096955280271041722,1530
+fx_unbalanced,fixest_fe_hetero_none_keepsing,5,x,-0.21427073439400496,0.066969266464439695,1530
+fx_unbalanced,fixest_fe_hetero_none_keepsing,5,"l(x, 1)",0.00088049476960256441,0.07394097516244047,1530
+fx_unbalanced,fixest_fe_hetero_none_keepsing,5,"l(y, 1)",0.12117855006040709,0.029552878413618189,1530
+fx_unbalanced,fixest_fe_hetero_none_keepsing,5,w,-0.011860792742561643,0.057172240804334577,1530
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,5,x,-0.15904914250033295,0.04876536382438728,1530
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,5,"l(x, 1)",-0.0636747310133077,0.075789478506399707,1530
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,5,"l(y, 1)",-0.0044318245363497225,0.03989500612948934,1530
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,5,w,0.029019160217392436,0.074873679893844469,1530
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,5,x,-0.15904914250033295,0.046870676723369302,1530
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,5,"l(x, 1)",-0.0636747310133077,0.085517547670148075,1530
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,5,"l(y, 1)",-0.0044318245363497225,0.067875542813006326,1530
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,5,w,0.029019160217392436,0.074506232566701372,1530
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,5,x,-0.15904914250033295,0.050506353108526948,1530
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,5,"l(x, 1)",-0.0636747310133077,0.078495265146387591,1530
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,5,"l(y, 1)",-0.0044318245363497225,0.041319311675783496,1530
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,5,w,0.029019160217392436,0.077546771287742733,1530
+fx_unbalanced,fixest_fe_cl_id_none,6,x,-0.19951311034782926,0.091644353275195975,1499
+fx_unbalanced,fixest_fe_cl_id_none,6,"l(x, 1)",0.082364900987067322,0.072402255216481221,1499
+fx_unbalanced,fixest_fe_cl_id_none,6,"l(y, 1)",0.11372514520763663,0.030668553419798836,1499
+fx_unbalanced,fixest_fe_cl_id_none,6,w,-0.020528418460973114,0.091030473486624935,1499
+fx_unbalanced,fixest_fe_hetero_none,6,x,-0.19951311034782926,0.068516446197850356,1499
+fx_unbalanced,fixest_fe_hetero_none,6,"l(x, 1)",0.082364900987067322,0.075575222816341187,1499
+fx_unbalanced,fixest_fe_hetero_none,6,"l(y, 1)",0.11372514520763663,0.030241275192238532,1499
+fx_unbalanced,fixest_fe_hetero_none,6,w,-0.020528418460973114,0.0575826985191722,1499
+fx_unbalanced,fixest_tfe_cl_id_none,6,x,-0.16431587689705096,0.066278775058677256,1499
+fx_unbalanced,fixest_tfe_cl_id_none,6,"l(x, 1)",0.032731969760601186,0.064466882693921035,1499
+fx_unbalanced,fixest_tfe_cl_id_none,6,"l(y, 1)",-0.0089595077305532709,0.036505965680377735,1499
+fx_unbalanced,fixest_tfe_cl_id_none,6,w,0.023955852833135727,0.071286011982128014,1499
+fx_unbalanced,fixest_tfe_twoway_none,6,x,-0.16431587689705096,0.062140772746512925,1499
+fx_unbalanced,fixest_tfe_twoway_none,6,"l(x, 1)",0.032731969760601186,0.069577457490331229,1499
+fx_unbalanced,fixest_tfe_twoway_none,6,"l(y, 1)",-0.0089595077305532709,0.059034800034054306,1499
+fx_unbalanced,fixest_tfe_twoway_none,6,w,0.023955852833135727,0.077917187256792322,1499
+fx_unbalanced,fixest_tfe_cl_id_default,6,x,-0.16431587689705096,0.068652133942758473,1499
+fx_unbalanced,fixest_tfe_cl_id_default,6,"l(x, 1)",0.032731969760601186,0.066775360010153648,1499
+fx_unbalanced,fixest_tfe_cl_id_default,6,"l(y, 1)",-0.0089595077305532709,0.037813198016714428,1499
+fx_unbalanced,fixest_tfe_cl_id_default,6,w,0.023955852833135727,0.073838673670560254,1499
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,6,x,-0.19951311034782926,0.091644353275195975,1499
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,6,"l(x, 1)",0.082364900987067322,0.072402255216481221,1499
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,6,"l(y, 1)",0.11372514520763663,0.030668553419798836,1499
+fx_unbalanced,fixest_fe_cl_id_none_keepsing,6,w,-0.020528418460973114,0.091030473486624935,1499
+fx_unbalanced,fixest_fe_hetero_none_keepsing,6,x,-0.19951311034782926,0.068516446197850356,1499
+fx_unbalanced,fixest_fe_hetero_none_keepsing,6,"l(x, 1)",0.082364900987067322,0.075575222816341187,1499
+fx_unbalanced,fixest_fe_hetero_none_keepsing,6,"l(y, 1)",0.11372514520763663,0.030241275192238532,1499
+fx_unbalanced,fixest_fe_hetero_none_keepsing,6,w,-0.020528418460973114,0.0575826985191722,1499
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,6,x,-0.16431587689705096,0.066278775058677256,1499
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,6,"l(x, 1)",0.032731969760601186,0.064466882693921035,1499
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,6,"l(y, 1)",-0.0089595077305532709,0.036505965680377735,1499
+fx_unbalanced,fixest_tfe_cl_id_none_keepsing,6,w,0.023955852833135727,0.071286011982128014,1499
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,6,x,-0.16431587689705096,0.062140772746512925,1499
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,6,"l(x, 1)",0.032731969760601186,0.069577457490331229,1499
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,6,"l(y, 1)",-0.0089595077305532709,0.059034800034054306,1499
+fx_unbalanced,fixest_tfe_twoway_none_keepsing,6,w,0.023955852833135727,0.077917187256792322,1499
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,6,x,-0.16431587689705096,0.068652133942758473,1499
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,6,"l(x, 1)",0.032731969760601186,0.066775360010153648,1499
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,6,"l(y, 1)",-0.0089595077305532709,0.037813198016714428,1499
+fx_unbalanced,fixest_tfe_cl_id_default_keepsing,6,w,0.023955852833135727,0.073838673670560254,1499
+fx_balanced_id4,fixest_fe_twoway_none_id4,0,x,-0.54903316669064939,0.063613019698260428,236
+fx_balanced_id4,fixest_fe_twoway_none_id4,0,"l(x, 1)",0.013713354922945642,0.020737422279415857,236
+fx_balanced_id4,fixest_fe_twoway_none_id4,0,"l(y, 1)",0.53847598849672662,0.051266554412943588,236
+fx_balanced_id4,fixest_fe_twoway_none_id4,0,w,0.45084584105096526,0.039592836663809305,236
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,0,x,-0.54903316669064939,0.06243940669114232,236
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,0,"l(x, 1)",0.013713354922945642,NaN,236
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,0,"l(y, 1)",0.53847598849672662,0.042836193839850656,236
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,0,w,0.45084584105096526,0.037098144311655167,236
+fx_balanced_id4,fixest_fe_twoway_none_id4,1,x,-0.57803961531164927,0.043740705395061197,232
+fx_balanced_id4,fixest_fe_twoway_none_id4,1,"l(x, 1)",-0.066762719638019941,0.11265816943889856,232
+fx_balanced_id4,fixest_fe_twoway_none_id4,1,"l(y, 1)",0.21023583854040048,0.050735401782039981,232
+fx_balanced_id4,fixest_fe_twoway_none_id4,1,w,0.56314897344495762,0.059174553293590539,232
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,1,x,-0.57803961531164927,0.021839208529413998,232
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,1,"l(x, 1)",-0.066762719638019941,0.11217935844698836,232
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,1,"l(y, 1)",0.21023583854040048,0.050699392517048802,232
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,1,w,0.56314897344495762,0.056157207971100742,232
+fx_balanced_id4,fixest_fe_twoway_none_id4,2,x,-0.49238929072669863,0.079654573686522498,228
+fx_balanced_id4,fixest_fe_twoway_none_id4,2,"l(x, 1)",-0.069987589762176103,0.040786992786513591,228
+fx_balanced_id4,fixest_fe_twoway_none_id4,2,"l(y, 1)",0.05710640159704726,0.078946450634611851,228
+fx_balanced_id4,fixest_fe_twoway_none_id4,2,w,0.31436717700863526,0.060524242976690817,228
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,2,x,-0.49238929072669863,0.079652416911159638,228
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,2,"l(x, 1)",-0.069987589762176103,0.040316030219967332,228
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,2,"l(y, 1)",0.05710640159704726,0.078882050980734975,228
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,2,w,0.31436717700863526,0.060395562987223102,228
+fx_balanced_id4,fixest_fe_twoway_none_id4,3,x,-0.39069187051210297,0.064130215407227201,224
+fx_balanced_id4,fixest_fe_twoway_none_id4,3,"l(x, 1)",0.015260392408640185,0.10229736138765588,224
+fx_balanced_id4,fixest_fe_twoway_none_id4,3,"l(y, 1)",0.044773389933477258,0.071757342611356051,224
+fx_balanced_id4,fixest_fe_twoway_none_id4,3,w,0.17054902482019604,0.12225224314530568,224
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,3,x,-0.39069187051210297,0.062889941589298906,224
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,3,"l(x, 1)",0.015260392408640185,0.10195621277939235,224
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,3,"l(y, 1)",0.044773389933477258,0.070364715084091367,224
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,3,w,0.17054902482019604,0.12223140680387702,224
+fx_balanced_id4,fixest_fe_twoway_none_id4,4,x,-0.2414097118457231,0.13689388986226764,220
+fx_balanced_id4,fixest_fe_twoway_none_id4,4,"l(x, 1)",0.028166031512444342,0.16511415123012346,220
+fx_balanced_id4,fixest_fe_twoway_none_id4,4,"l(y, 1)",0.078426642964928225,0.080242096825729123,220
+fx_balanced_id4,fixest_fe_twoway_none_id4,4,w,0.10092152512931392,0.17542810268504574,220
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,4,x,-0.2414097118457231,0.13576806019991575,220
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,4,"l(x, 1)",0.028166031512444342,0.16509483046013232,220
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,4,"l(y, 1)",0.078426642964928225,0.073858044115260355,220
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,4,w,0.10092152512931392,0.17538327079324362,220
+fx_balanced_id4,fixest_fe_twoway_none_id4,5,x,-0.19619930926252202,0.16285241271962109,216
+fx_balanced_id4,fixest_fe_twoway_none_id4,5,"l(x, 1)",0.08002771160137917,0.098150266751896253,216
+fx_balanced_id4,fixest_fe_twoway_none_id4,5,"l(y, 1)",0.070229977203656146,0.045563813116294781,216
+fx_balanced_id4,fixest_fe_twoway_none_id4,5,w,0.084180555340283181,0.16259832457804946,216
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,5,x,-0.19619930926252202,0.16161585512594875,216
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,5,"l(x, 1)",0.08002771160137917,0.095589468997155855,216
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,5,"l(y, 1)",0.070229977203656146,0.040485420971121955,216
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,5,w,0.084180555340283181,0.16186000741513218,216
+fx_balanced_id4,fixest_fe_twoway_none_id4,6,x,-0.12730834931721277,0.16134447377749633,212
+fx_balanced_id4,fixest_fe_twoway_none_id4,6,"l(x, 1)",0.078159969845971983,0.022298442315449248,212
+fx_balanced_id4,fixest_fe_twoway_none_id4,6,"l(y, 1)",-0.014451753169653057,0.047906540158193865,212
+fx_balanced_id4,fixest_fe_twoway_none_id4,6,w,0.11585783432207893,0.1556124169781965,212
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,6,x,-0.12730834931721277,0.16127993065808491,212
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,6,"l(x, 1)",0.078159969845971983,NaN,212
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,6,"l(y, 1)",-0.014451753169653057,0.047424330445631192,212
+fx_balanced_id4,fixest_fe_twoway_none_nofix_id4,6,w,0.11585783432207893,0.15561237560732558,212

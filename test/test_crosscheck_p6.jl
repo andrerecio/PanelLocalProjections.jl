@@ -1,0 +1,261 @@
+# Cross-checks of panel LP-IV (Phase 6a) on the fx_lpiv panels, against Stata
+# (crosscheck/stata/p6_lpiv.do → test/fixtures/stata/p6_lpiv.csv): ivreghdfe and xtivreg2;
+# and R (crosscheck/R/p6_fixest.R → test/fixtures/r/p6_fixest.csv): fixest's feols with an
+# IV part, every variance without small-sample correction.
+#
+# Map (crosscheck/README.md):
+# - ivreghdfe … robust (with or without `small`, which it ignores): Robust();
+# - ivreghdfe … cluster(c): Clustered(c) when no fixed effect is nested in c. When one is
+#   (unit effects with cluster(id), time effects with cluster(t)), ivreghdfe's factor
+#   (N−1)/(N − K − df′)·G/(G−1) counts df′ = df_a minus the levels of the nested effect,
+#   two fewer than reghdfe's rule (`ssc = :stata`); the test applies it to CR0;
+# - ivreghdfe … cluster(id t): Clustered(:unit, :time; psd = false);
+# - ivreghdfe … dkraay(b): DriscollKraaySE(b − 1) (b is the bandwidth, lags + 1);
+# - xtivreg2 …, fe cluster(id): Clustered(:unit; ssc = :none); fe robust small: Robust().
+# JuliaFormatter (sciml) mangles `@testitem ... setup = [...]`; this file is formatted by hand.
+#! format: off
+
+@testitem "Stata: ivreghdfe and xtivreg2" tags = [:crosscheck, :stata, :lpiv] begin
+    using StatsModels
+    include(joinpath(@__DIR__, "support", "PLPDGPs.jl"))
+    using .PLPDGPs: read_csv
+    const FIX = joinpath(@__DIR__, "fixtures")
+    num(s) = (s = strip(s); s == "." || isempty(s) ? NaN : parse(Float64, s))
+    lines = readlines(joinpath(FIX, "stata", "p6_lpiv.csv"))
+    hdr = Tuple(Symbol.(split(lines[1], ",")))
+    ref = [NamedTuple{hdr}(Tuple(strip.(split(l, ",")))) for l in lines[2:end]]
+    @test length(ref) == 160
+    kw = (; id = :id, time = :t, horizon = 0:4)
+    # ivreghdfe's clustered factor when the fixed effect `f` is nested in the cluster
+    function ivfac(fit, f, G)
+        n = fit.dof.nobs
+        return (n - 1) / (n - fit.dof.k - (fit.dof.df_a - fit.dof.felevels[f])) * G / (G - 1)
+    end
+    for ds in ("fx_lpiv", "fx_lpiv_unbal")
+        d = read_csv(joinpath(FIX, "synthetic", "$ds.csv"))
+        r2 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id) + fe(t)), d; kw...)
+        r1 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id)), d; kw...)
+        rg = panellp(@formula(leads(y) ~ (g1 & ffr + g2 & ffr + g3 & ffr ~ g1 & mp + g2 & mp + g3 & mp) +
+                w + fe(id)), d; kw...)
+        cv = Dict(
+            "robust" => vcov(Robust(), r2),
+            "cl_id0" => vcov(Clustered(:unit; ssc = :none), r2),
+            "cl_t0" => vcov(Clustered(:time; ssc = :none), r2),
+            "cl_id_t" => vcov(Clustered(:unit, :time; psd = false), r2),
+            "dk3" => vcov(DriscollKraaySE(2), r2),
+            "fe_cl_t" => vcov(Clustered(:time), r1),
+            "xt_cl_id" => vcov(Clustered(:unit; ssc = :none), r1),
+            "xt_robust" => vcov(Robust(), r1),
+            "grp" => vcov(Clustered(:time), rg))
+        for x in filter(x -> x.dataset == ds, ref)
+            h = parse(Int, x.h)
+            spec = replace(x.spec, "_small" => "")
+            r = spec == "grp_fe_cl_t" ? rg : startswith(spec, "twfe") ? r2 : r1
+            j = spec == "grp_fe_cl_t" ? parse(Int, x.term[2:2]) : 1
+            @test coef(r, h)[j] ≈ num(x.b) rtol = 1e-12
+            fit = r.fits[h + 1]
+            v = if spec == "twfe_robust"
+                cv["robust"].V[h + 1][j, j]
+            elseif spec == "twfe_cl_id"
+                ivfac(fit, 1, parse(Int, x.G)) * cv["cl_id0"].V[h + 1][j, j]
+            elseif spec == "twfe_cl_t"
+                ivfac(fit, 2, parse(Int, x.G)) * cv["cl_t0"].V[h + 1][j, j]
+            elseif spec == "twfe_cl_id_t"
+                cv["cl_id_t"].V[h + 1][j, j]
+            elseif spec == "twfe_dk3"
+                cv["dk3"].V[h + 1][j, j]
+            elseif spec == "fe_cl_t"
+                cv["fe_cl_t"].V[h + 1][j, j]
+            elseif spec == "xtivreg2_fe_cl_id"
+                cv["xt_cl_id"].V[h + 1][j, j]
+            elseif spec == "xtivreg2_fe_robust"
+                cv["xt_robust"].V[h + 1][j, j]
+            else
+                @test spec == "grp_fe_cl_t"
+                cv["grp"].V[h + 1][j, j]
+            end
+            @test sqrt(v) ≈ num(x.se) rtol = 1e-9
+            @test fit.dof.nobs == parse(Int, x.N)
+        end
+    end
+end
+
+@testitem "R: fixest feols IV" tags = [:crosscheck, :r, :lpiv] begin
+    using StatsModels
+    include(joinpath(@__DIR__, "support", "PLPDGPs.jl"))
+    using .PLPDGPs: read_csv
+    const FIX = joinpath(@__DIR__, "fixtures")
+    lines = readlines(joinpath(FIX, "r", "p6_fixest.csv"))
+    hdr = Tuple(Symbol.(split(lines[1], ",")))
+    ref = [NamedTuple{hdr}(Tuple(strip.(split(l, ",")))) for l in lines[2:end]]
+    @test length(ref) == 150
+    spec = Dict("twfe_hetero0" => Robust(; ssc = :none),
+        "twfe_cl_id0" => Clustered(:unit; ssc = :none),
+        "twfe_cl_t0" => Clustered(:time; ssc = :none),
+        "twfe_cl_id_t0" => Clustered(:unit, :time; ssc = :none, psd = false),
+        # fixest lags over the periods present (period 25 is absent in fx_lpiv_unbal)
+        "twfe_dk2_0" => DriscollKraaySE(2; ssc = :none, timelags = :position))
+    term = Dict("fit_sffr" => "s & ffr", "w" => "w", "Ly" => "L1.y")
+    for ds in ("fx_lpiv", "fx_lpiv_unbal")
+        d = read_csv(joinpath(FIX, "synthetic", "$ds.csv"))
+        # fixef.rm = "none" keeps singletons
+        r = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id) + fe(t)), d;
+            id = :id, time = :t, horizon = 0:4, singletons = :keep)
+        cv = Dict(k => vcov(v, r) for (k, v) in spec)
+        for x in filter(x -> x.dataset == ds, ref)
+            h = parse(Int, x.h)
+            j = findfirst(==(term[x.term]), coefnames(r))
+            # fixest demeans iteratively (exact on the balanced panel)
+            tol = ds == "fx_lpiv" ? 1e-11 : 5e-9
+            @test coef(r, h)[j] ≈ parse(Float64, x.b) rtol = tol
+            @test sqrt(cv[x.spec].V[h + 1][j, j]) ≈ parse(Float64, x.se) rtol = tol
+            @test nobs(r, h) == parse(Int, x.nobs)
+        end
+    end
+end
+
+# Lag-augmented panel LP-IV (Phase 6b): p = min(h, 2) lags of y, of s & ffr (endogenous)
+# and of s & mp (instruments): LagAugmented(CappedLags(2)). Stata:
+# crosscheck/stata/p6b_lpiv_la.do; R: crosscheck/R/p6b_fixest_la.R.
+@testitem "Stata and R: lag-augmented LP-IV" tags = [:crosscheck, :stata, :r, :lpiv, :tlahr] begin
+    using StatsModels
+    include(joinpath(@__DIR__, "support", "PLPDGPs.jl"))
+    using .PLPDGPs: read_csv
+    const FIX = joinpath(@__DIR__, "fixtures")
+    function readref(path)
+        lines = readlines(path)
+        hdr = Tuple(Symbol.(split(lines[1], ",")))
+        return [NamedTuple{hdr}(Tuple(strip.(split(l, ",")))) for l in lines[2:end]]
+    end
+    num(s) = s == "." || isempty(s) ? NaN : parse(Float64, s)
+    st = readref(joinpath(FIX, "stata", "p6b_lpiv_la.csv"))
+    fx = readref(joinpath(FIX, "r", "p6b_fixest_la.csv"))
+    @test length(st) == 40 && length(fx) == 96
+    est = LagAugmented(CappedLags(2))
+    kw = (; id = :id, time = :t, horizon = 0:4, estimator = est)
+    ivfac(fit, f, G) = (n = fit.dof.nobs;
+        (n - 1) / (n - fit.dof.k - (fit.dof.df_a - fit.dof.felevels[f])) * G / (G - 1))
+    term = Dict("fit_sffr" => "s & ffr", "fit_Lsffr1" => "L1.(s & ffr)",
+        "fit_Lsffr2" => "L2.(s & ffr)", "w" => "w", "Ly1" => "L1.y", "Ly2" => "L2.y")
+    for ds in ("fx_lpiv", "fx_lpiv_unbal")
+        d = read_csv(joinpath(FIX, "synthetic", "$ds.csv"))
+        r2 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)), d; kw...)
+        r1 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id)), d; kw...)
+        @test lagorder(r2) == [0, 1, 2, 2, 2]
+        cv0 = vcov(Clustered(:time; ssc = :none), r2)
+        cv = Dict("la_twfe_robust" => vcov(Robust(), r2), "la_twfe_dk3" => vcov(DriscollKraaySE(2), r2),
+            "la_fe_cl_t" => vcov(Clustered(:time), r1))
+        for x in filter(x -> x.dataset == ds, st)
+            h = parse(Int, x.h)
+            r = x.spec == "la_fe_cl_t" ? r1 : r2
+            fit = r.fits[h + 1]
+            @test coef(r, h)[1] ≈ num(x.b) rtol = 1e-12
+            @test fit.dof.nobs == parse(Int, x.N)
+            v = x.spec == "la_twfe_cl_t" ? ivfac(fit, 2, parse(Int, x.G)) * cv0.V[h + 1][1, 1] :
+                cv[x.spec].V[h + 1][1, 1]
+            @test sqrt(v) ≈ num(x.se) rtol = 1e-9
+        end
+        # fixest keeps singletons; clustered by period without correction it is t-LAHR
+        rk = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + fe(id) + fe(t)), d; kw...,
+            singletons = :keep)
+        cvk = Dict("la_twfe_cl_t0" => vcov(TLAHR(refine = false), rk),
+            "la_twfe_hetero0" => vcov(Robust(; ssc = :none), rk))
+        tol = ds == "fx_lpiv" ? 1e-11 : 5e-9
+        for x in filter(x -> x.dataset == ds, fx)
+            h = parse(Int, x.h)
+            j = findfirst(==(term[x.term]), coefnames(rk))
+            @test coef(rk, h)[j] ≈ num(x.b) rtol = tol
+            @test sqrt(cvk[x.spec].V[h + 1][j, j]) ≈ num(x.se) rtol = tol
+            @test nobs(rk, h) == parse(Int, x.nobs)
+        end
+    end
+end
+
+# First-stage diagnostics (Phase 6c): ivreghdfe's e(widstat) (Kleibergen–Paap rk Wald F)
+# in p6_lpiv.csv (just-identified; one and three endogenous regressors) and p6c_firststage.csv
+# (over-identified), and weakivtest's r(F_eff) (Montiel Olea–Pflueger). Their small-sample
+# factor counts the first stage's regressors (firststage's own dof); with a fixed effect
+# nested in the cluster, ivreghdfe's df′ = max(df_a − its levels, 1); xtivreg2's widstat
+# uses (N−1)/(N−K)·G/(G−1) on CR0.
+@testitem "Stata: first-stage diagnostics (KP F, effective F)" tags = [:crosscheck, :stata, :lpiv] begin
+    using StatsModels
+    include(joinpath(@__DIR__, "support", "PLPDGPs.jl"))
+    using .PLPDGPs: read_csv
+    const FIX = joinpath(@__DIR__, "fixtures")
+    function readref(path)
+        lines = readlines(path)
+        hdr = Tuple(Symbol.(split(lines[1], ",")))
+        return [NamedTuple{hdr}(Tuple(strip.(split(l, ",")))) for l in lines[2:end]]
+    end
+    num(s) = (s = strip(s); s == "." || isempty(s) ? NaN : parse(Float64, s))
+    # ivreghdfe's clustered factor, the fixed effect f nested in the cluster, first-stage k
+    ivfs(fit, f, G, L, m) = (n = fit.dof.nobs; k = fit.dof.k - m + L;
+        (n - 1) / (n - k - max(fit.dof.df_a - fit.dof.felevels[f], 1)) * G / (G - 1))
+    p6 = filter(x -> x.term in ("sffr", "g1ffr"), readref(joinpath(FIX, "stata", "p6_lpiv.csv")))
+    p6c = readref(joinpath(FIX, "stata", "p6c_firststage.csv"))
+    @test length(p6) == 140 && length(p6c) == 80
+    for ds in ("fx_lpiv", "fx_lpiv_unbal")
+        d = read_csv(joinpath(FIX, "synthetic", "$ds.csv"))
+        kw = (; id = :id, time = :t, horizon = 0:4)
+        # just-identified (p6_lpiv.csv)
+        r2 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id) + fe(t)), d; kw...)
+        r1 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp) + w + lags(y, 1) + fe(id)), d; kw...)
+        rg = panellp(@formula(leads(y) ~ (g1 & ffr + g2 & ffr + g3 & ffr ~ g1 & mp + g2 & mp + g3 & mp) +
+                w + fe(id)), d; kw...)
+        F = Dict("twfe_robust" => firststage(r2; vcov = Robust()).kpF,
+            "twfe_cl_id" => firststage(r2; vcov = Clustered(:unit; ssc = :none)).kpF,
+            "twfe_cl_t" => firststage(r2; vcov = Clustered(:time; ssc = :none)).kpF,
+            "twfe_cl_id_t" => firststage(r2; vcov = Clustered(:unit, :time; psd = false)).kpF,
+            "twfe_dk3" => firststage(r2; vcov = DriscollKraaySE(2)).kpF,
+            "fe_cl_t" => firststage(r1; vcov = Clustered(:time)).kpF,
+            "xtivreg2_fe_cl_id" => firststage(r1; vcov = Clustered(:unit; ssc = :none)).kpF,
+            "xtivreg2_fe_robust" => firststage(r1; vcov = Robust()).kpF,
+            "grp_fe_cl_t" => firststage(rg; vcov = Clustered(:time)).kpF)
+        for x in filter(x -> x.dataset == ds, p6)
+            h = parse(Int, x.h)
+            sp = replace(x.spec, "_small" => "")
+            fit = (sp == "grp_fe_cl_t" ? rg : startswith(sp, "twfe") ? r2 : r1).fits[h + 1]
+            v = F[sp][h + 1]
+            sp == "twfe_cl_id" && (v /= ivfs(fit, 1, parse(Int, x.G), 1, 1))
+            sp == "twfe_cl_t" && (v /= ivfs(fit, 2, parse(Int, x.G), 1, 1))
+            sp == "xtivreg2_fe_cl_id" &&
+                (v /= (fit.dof.nobs - 1) / (fit.dof.nobs - fit.dof.k) * 60 / 59)
+            @test v ≈ num(x.F) rtol = 1e-9
+        end
+        # over-identified (p6c_firststage.csv)
+        o2 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp + sv & mp) + w + lags(y, 1) + fe(id) + fe(t)), d;
+            kw..., horizon = 0:3)
+        o1 = panellp(@formula(leads(y) ~ (s & ffr ~ s & mp + sv & mp) + w + lags(y, 1) + fe(id)), d;
+            kw..., horizon = 0:3)
+        fr = firststage(o2; vcov = Robust())
+        ft = firststage(o2; vcov = Clustered(:time; ssc = :none))
+        fi = firststage(o1; vcov = Clustered(:unit; ssc = :none))
+        fb = firststage(o1; vcov = Robust())
+        # two endogenous regressors, three instruments (m = 2, L = 3)
+        dw = merge(d, (; wmp = d.w .* d.mp))
+        f2 = @formula(leads(y) ~ (s & ffr + sv & ffr ~ s & mp + sv & mp + wmp) + w + lags(y, 1) + fe(id) + fe(t))
+        f1 = @formula(leads(y) ~ (s & ffr + sv & ffr ~ s & mp + sv & mp + wmp) + w + lags(y, 1) + fe(id))
+        m2 = panellp(f2, dw; kw..., horizon = 0:3)
+        m1 = panellp(f1, dw; kw..., horizon = 0:3)
+        # group dummies × the aggregate without exogenous regressors: tied singular values
+        dg = panellp(@formula(leads(y) ~ (g1 & ffr + g2 & ffr + g3 & ffr ~ g1 & mp + g2 & mp + g3 & mp) + fe(id)),
+            d; kw..., horizon = 0:3)
+        F = Dict("m2_twfe_robust" => firststage(m2; vcov = Robust()),
+            "m2_twfe_cl_t" => firststage(m2; vcov = Clustered(:time; ssc = :none)),
+            "m2_fe_cl_id" => firststage(m1; vcov = Clustered(:unit; ssc = :none)),
+            "diag_fe_robust" => firststage(dg; vcov = Robust()))
+        for x in filter(x -> x.dataset == ds, p6c)
+            h = parse(Int, x.h)
+            G = x.G == "." ? 0 : parse(Int, x.G)
+            pick(f) = (x.stat == "widstat" ? f.kpF : f.effF)[h + 1]
+            v = x.spec == "twfe_robust" ? pick(fr) :
+                x.spec == "twfe_cl_t" ? pick(ft) / ivfs(o2.fits[h + 1], 2, G, 2, 1) :
+                x.spec == "fe_cl_id" ? pick(fi) / ivfs(o1.fits[h + 1], 1, G, 2, 1) :
+                x.spec == "fe_robust" ? pick(fb) :
+                x.spec == "m2_twfe_cl_t" ? pick(F[x.spec]) / ivfs(m2.fits[h + 1], 2, G, 3, 2) :
+                x.spec == "m2_fe_cl_id" ? pick(F[x.spec]) / ivfs(m1.fits[h + 1], 1, G, 3, 2) :
+                pick(F[x.spec])
+            @test v ≈ num(x.value) rtol = 1e-9
+        end
+    end
+end

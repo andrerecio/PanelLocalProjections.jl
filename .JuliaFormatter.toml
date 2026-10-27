@@ -1,0 +1,2 @@
+style = "sciml"
+ignore = ["docs/paper", "docs/references", "docs/notes", "crosscheck/ado"]

@@ -1,0 +1,13 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+PanelLocalProjections = "4bc008c6-1160-4c54-8f8b-e57ec2b93f89"
+
+[sources]
+PanelLocalProjections = {path = ".."}
+
+[compat]
+CairoMakie = "0.15"
+DelimitedFiles = "1"
+Documenter = "1"
