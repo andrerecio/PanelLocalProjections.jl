@@ -4,13 +4,13 @@ Panel local projections in Julia. For each horizon `h`, the package estimates a 
 regression of `y_{i,t+h}` on a shock, and gathers the estimators and inference
 procedures of the recent panel-LP literature in one place:
 
-| Method | Reference | Status |
-|---|---|---|
-| Fixed-effects (within/LSDV) panel LP, with unit-, time- and two-way-clustered, heteroskedasticity-robust and Driscoll–Kraay standard errors | Jordà (2005); Driscoll & Kraay (1998); Cameron, Gelbach & Miller (2011) | v0.1 |
-| Split-panel jackknife (SPJ) correction of the Nickell bias of the FE estimator | Mei, Sheng & Shi (2026, *JIE*) | v0.1 |
-| Cumulative-difference OLS (CD-OLS), which avoids the within transformation | Ugarte-Ruiz (2026, BBVA Research) | v0.1 |
-| t-LAHR inference for aggregate (macro) shocks: time-clustered, lag-augmented, heteroskedasticity-robust, with an HC2 + Imbens–Kolesár refinement | Almuzara & Sancibrián (2026) | v0.1 |
-| Panel LP-IV (2SLS, with lag augmentation and t-LAHR), with Kleibergen–Paap and Montiel Olea–Pflueger first-stage diagnostics | Almuzara & Sancibrián (2026, §3.4); Kleibergen & Paap (2006); Montiel Olea & Pflueger (2013) | v0.2 |
+| Method | Reference |
+|---|---|
+| Fixed-effects (within/LSDV) panel LP, with unit-, time- and two-way-clustered, heteroskedasticity-robust and Driscoll–Kraay standard errors | Jordà (2005); Driscoll & Kraay (1998); Cameron, Gelbach & Miller (2011) |
+| Split-panel jackknife (SPJ) correction of the Nickell bias of the FE estimator | Mei, Sheng & Shi (2026, *JIE*) |
+| Cumulative-difference OLS (CD-OLS), which avoids the within transformation | Ugarte-Ruiz (2026, BBVA Research) |
+| t-LAHR inference for aggregate (macro) shocks: time-clustered, lag-augmented, heteroskedasticity-robust, with an HC2 + Imbens–Kolesár refinement | Almuzara & Sancibrián (2026) |
+| Panel LP-IV (2SLS, with lag augmentation and t-LAHR), with Kleibergen–Paap and Montiel Olea–Pflueger first-stage diagnostics | Almuzara & Sancibrián (2026, §3.4); Kleibergen & Paap (2006); Montiel Olea & Pflueger (2013) |
 
 Version 0.2.0. What comes after it (joint bands across horizons, weak-IV-robust
 inference, negative horizons) is listed in [`TODO.md`](TODO.md). The documentation covers the
