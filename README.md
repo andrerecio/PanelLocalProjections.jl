@@ -38,6 +38,43 @@ as  = panellp(@formula(ldiff(logk) ~ lev & mp + lev + fe(firm) + fe(sector) & fe
 summarize(as, TLAHR(); level = 0.90)
 ```
 
+## Example: monetary policy and US states
+
+How much more does personal income fall in states more exposed to manufacturing after a
+rise in the 1-year Treasury rate? The rate is instrumented by monetary policy surprises,
+a panel LP-IV in Almuzara & Sancibrián's setting. The data are public: BEA state personal
+income, FRED's 1-year rate (`GS1`), and the Jarociński–Karadi surprises.
+`examples/us_states/build.jl` downloads them and builds the panel; the plot comes from
+`examples/us_states/figure.jl`.
+
+```julia
+# ldiff(lpi): 100 × (log income_{t+h} − log income_{t−1}); s: 1998 manufacturing share
+# (standardised); gs1: 1-year rate; mp: surprise; state and quarter effects
+iv = panellp(@formula(ldiff(lpi) ~ (s & firstdiff(gs1) ~ s & mp) + fe(fips) + fe(t)), d;
+             id = :fips, time = :t, horizon = 12, estimator = LagAugmented())
+summarize(iv, TLAHR(refine = false); level = 0.90)    # t-LAHR for LP-IV (A&S A.4)
+summarize(iv, Clustered(:unit); level = 0.90)         # clustered by state, for comparison
+firststage(iv).kpF                                    # Kleibergen–Paap F, clustered by period
+
+using CairoMakie
+irfplot(summarize(iv, TLAHR(refine = false); level = 0.90))
+```
+
+![LP-IV and reduced-form responses of US state personal income, with t-LAHR and state-clustered 90% bands](docs/src/assets/us_states_irf.png)
+
+Clustered by state, the responses look significant at several horizons. The t-LAHR bands
+are 1.5 to 2.7 times wider, and none of them excludes zero. The first stage shows the same
+thing: its Kleibergen–Paap F is about 2 clustered by period, but 35 robust and 200,000
+clustered by state. The shock is aggregate, so the effective sample size is the 84
+quarters, not the 4,284 state-quarters. See the
+[example page](docs/src/examples/us_states.md) for the details.
+
+Data: BEA Regional Economic Accounts; Board of Governors of the Federal Reserve System
+(H.15), via FRED; Jarociński & Karadi (2020, *AEJ: Macroeconomics*), updated surprises
+(CC BY 4.0). The data are not distributed with the package.
+
+## Conventions
+
 Leads, lags and differences are always computed on the (unit, calendar period) grid, so
 gaps in a unit's time series are respected and nothing is shifted by row position. Every
 convention on which reference implementations disagree is an explicit option, and each

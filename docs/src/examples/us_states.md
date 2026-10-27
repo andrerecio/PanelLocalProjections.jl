@@ -66,6 +66,11 @@ weakly identified.
 
 ## Responses
 
+![LP-IV and reduced-form responses, with t-LAHR and state-clustered 90% bands](../assets/us_states_irf.png)
+
+The figure comes from `julia --project=docs examples/us_states/figure.jl`. It shows the
+t-LAHR bands shaded and the state-clustered bands dashed.
+
 The LP-IV coefficient (percent per percentage point of the 1-year rate, per standard
 deviation of exposure) and its standard error under four variances:
 

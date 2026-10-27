@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- README: a worked example with a figure, the US state panel LP-IV with t-LAHR against
+  state-clustered bands, drawn by `examples/us_states/figure.jl` into
+  `docs/src/assets/us_states_irf.png` (also on the example page).
+
 ## 0.2.0 (2026-10-26): panel LP-IV
 
 ### Phase 6c: first-stage diagnostics, public example, docs
